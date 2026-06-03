@@ -44,6 +44,59 @@
 		pressed = false;
 	}
 
+	var rightMousePan = {
+		orig: { x: 0, y: 0 },
+		pressed: false,
+		previousCursor: ""
+	};
+
+	function isRightMouseButton(evt) {
+		return evt.button === 2 || (evt.buttons & 2) === 2;
+	}
+
+	function stopRightMouseEvent(evt) {
+		evt.preventDefault();
+		evt.stopPropagation();
+		if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
+	}
+
+	function startRightMousePan(evt) {
+		if (!isRightMouseButton(evt)) return;
+		stopRightMouseEvent(evt);
+		rightMousePan.pressed = true;
+		rightMousePan.orig.x = scrollX + evt.clientX;
+		rightMousePan.orig.y = scrollY + evt.clientY;
+		rightMousePan.previousCursor = Tools.svg.style.cursor;
+		Tools.svg.style.cursor = "move";
+	}
+
+	function moveRightMousePan(evt) {
+		if (!rightMousePan.pressed) return;
+		if (evt.buttons !== undefined && (evt.buttons & 2) !== 2) {
+			stopRightMousePan(evt);
+			return;
+		}
+		stopRightMouseEvent(evt);
+		window.scrollTo(rightMousePan.orig.x - evt.clientX, rightMousePan.orig.y - evt.clientY);
+	}
+
+	function stopRightMousePan(evt) {
+		if (!rightMousePan.pressed) return;
+		stopRightMouseEvent(evt);
+		rightMousePan.pressed = false;
+		Tools.svg.style.cursor = rightMousePan.previousCursor;
+	}
+
+	function cancelRightMousePan() {
+		if (!rightMousePan.pressed) return;
+		rightMousePan.pressed = false;
+		Tools.svg.style.cursor = rightMousePan.previousCursor;
+	}
+
+	function preventBoardContextMenu(evt) {
+		evt.preventDefault();
+	}
+
 	Tools.add({ //The new tool
 		// "name": "Hand",
 	"icon": "✋",
@@ -62,4 +115,10 @@
 
 	//The hand tool is selected by default
 	Tools.change("Hand");
+
+	Tools.svg.addEventListener("mousedown", startRightMousePan, true);
+	document.addEventListener("mousemove", moveRightMousePan, true);
+	document.addEventListener("mouseup", stopRightMousePan, true);
+	window.addEventListener("blur", cancelRightMousePan, false);
+	Tools.board.addEventListener("contextmenu", preventBoardContextMenu, false);
 })(); //End of code isolation
