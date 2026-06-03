@@ -31,7 +31,7 @@
 	
 	var currShape = null;
 	var curTool = "single";
-	var icons = ["<i style='color: #e75480;margin-top:7px' class='fas fa-skull-crossbones'></i>","<i style='color: black;margin-top:7px' class='fas fa-skull-crossbones'></i>",];
+	var icons = ["<img class='eraser-tool-icon' src='tools/images/eraser-icon.png?v=20260603-3' alt=''>","<img class='eraser-tool-icon eraser-tool-icon-multi' src='tools/images/eraser-icon.png?v=20260603-3' alt=''>",];
 	var end = false;
 	var lastTime = performance.now(); //The time at which the last point was drawn
 	var makeRect = false;
@@ -364,7 +364,7 @@
 			"release": stopErasing,
 		},
 		"shortcuts": {
-            "changeTool":"5"
+            "changeTool":"2"
         },
 		"draw": draw,
 		"mouseCursor": "crosshair",

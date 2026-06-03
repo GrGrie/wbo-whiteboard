@@ -393,7 +393,7 @@
 			"release": stopLine,
 		},
 		"shortcuts": {
-            "changeTool":"2"
+            "changeTool":"5"
 		},
 		"toggle":toggle,
 		"menu":{
