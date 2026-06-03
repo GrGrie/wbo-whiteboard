@@ -140,7 +140,10 @@
 	}
 
 	function isLocked(elem){
-		return elem && elem.getAttribute && elem.getAttribute("data-lock") == 1;
+		return elem && elem.getAttribute && (
+			elem.getAttribute("data-lock") == 1 ||
+			elem.getAttribute("data-protected") == 1
+		);
 	}
 
 

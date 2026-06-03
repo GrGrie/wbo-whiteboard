@@ -1088,25 +1088,23 @@ Tools.getObjectPlane = function (elem) {
 Tools.getPlaneGroup = function (plane) {
 	var groupId = "plane-" + Tools.layer + "-" + plane;
 	var group = Tools.svg.getElementById(groupId);
-	if (!group) {
-		group = Tools.createSVGElement("g", {
-			id: groupId,
-			"data-plane-group": plane
-		});
-	}
-
 	var order = ["sheet", "document", "drawing"];
+	var groups = {};
+
 	for (var i = 0; i < order.length; i++) {
-		var existing = Tools.svg.getElementById("plane-" + Tools.layer + "-" + order[i]);
-		if (existing && existing.parentNode === Tools.group) existing.remove();
-	}
-	for (var j = 0; j < order.length; j++) {
-		var ordered = Tools.svg.getElementById("plane-" + Tools.layer + "-" + order[j]);
-		if (ordered) Tools.group.appendChild(ordered);
-		if (order[j] === plane && !group.parentNode) Tools.group.appendChild(group);
+		var orderedPlane = order[i];
+		var orderedGroup = Tools.svg.getElementById("plane-" + Tools.layer + "-" + orderedPlane);
+		if (!orderedGroup) {
+			orderedGroup = Tools.createSVGElement("g", {
+				id: "plane-" + Tools.layer + "-" + orderedPlane,
+				"data-plane-group": orderedPlane
+			});
+		}
+		if (orderedGroup.parentNode !== Tools.group) Tools.group.appendChild(orderedGroup);
+		groups[orderedPlane] = orderedGroup;
 	}
 
-	return group;
+	return groups[plane] || groups.drawing;
 };
 
 Tools.placeElement = function (elem, plane) {

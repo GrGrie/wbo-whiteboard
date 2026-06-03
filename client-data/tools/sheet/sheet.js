@@ -27,7 +27,7 @@
 			y: Math.round(y),
 			w: Math.round(width),
 			h: Math.round(height),
-			data: 1
+			protected: 1
 		};
 		draw(msg);
 		Tools.send(msg, "Sheet");
@@ -49,10 +49,11 @@
 		rect.setAttribute("stroke", "#d9d9d9");
 		rect.setAttribute("stroke-width", "2");
 		rect.setAttribute("data-plane", "sheet");
+		rect.setAttribute("data-protected", msg.protected !== undefined ? msg.protected : 1);
 		if(msg.transform){
 			rect.setAttribute("transform", msg.transform);
 		}
-		rect.setAttribute("data-lock", msg.data !== undefined ? msg.data : 1);
+		rect.setAttribute("data-lock", msg.data !== undefined ? msg.data : 0);
 		rect.onmousedown = function (evt) {
 			var activeTool = Tools.curTool && Tools.curTool.name;
 			if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;

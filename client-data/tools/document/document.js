@@ -49,10 +49,11 @@ function draw(msg) {
    // fakeCanvas.style.background = `url("${fileURL}") 170px 0px no-repeat`;
     //fakeCanvas.style.backgroundSize = "400px 500px";
     var aspect = msg.w/msg.h
-    var img = Tools.createSVGElement("image");
+    var img = Tools.svg.getElementById(msg.id) || Tools.createSVGElement("image");
     img.id=msg.id;
     img.setAttribute("class", "layer-"+Tools.layer);
     img.setAttribute("data-plane", "document");
+    img.setAttribute("data-protected", msg.protected !== undefined ? msg.protected : 1);
     img.setAttributeNS(xlinkNS, "href", msg.src);
     img.x.baseVal.value = msg['x'];
     img.y.baseVal.value = msg['y'];
@@ -62,6 +63,8 @@ function draw(msg) {
 			img.setAttribute("transform",msg.transform);
     if(msg.data !== undefined)
             img.setAttribute("data-lock", msg.data);
+    else
+            img.setAttribute("data-lock", 0);
     img.onmousedown = function (evt) {
         var activeTool = Tools.curTool && Tools.curTool.name;
         if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
