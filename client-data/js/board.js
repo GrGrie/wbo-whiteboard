@@ -455,7 +455,7 @@ Tools.HTML = {
 	addStylesheet: function (href) {
 		//Adds a css stylesheet to the html or svg document
 		var link = document.createElement("link");
-		link.href = href;
+		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260603-2";
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		document.head.appendChild(link);

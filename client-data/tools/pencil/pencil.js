@@ -81,20 +81,21 @@
 
 		return '<div class="pencil-color-menu">' +
 				'<div class="pencil-color-presets">' + presets + '</div>' +
-				'<label class="pencil-color-picker" for="chooseColor">' +
+				'<label class="pencil-color-picker" for="pencilColorInput">' +
 					'<span class="pencil-current-color"></span>' +
-					'<input type="color" id="chooseColor" value="' + Tools.getColor() + '" />' +
+					'<input type="color" id="pencilColorInput" value="' + Tools.getColor() + '" />' +
 				'</label>' +
 			'</div>';
 	}
 
 	function initMenu() {
-		var chooser = document.getElementById("chooseColor");
+		var chooser = document.getElementById("pencilColorInput");
 		var presets = document.getElementsByClassName("pencil-color-preset");
 		for(var i = 0; i < presets.length; i++){
 			presets[i].addEventListener("click", presetClicked);
 		}
 		if(chooser){
+			chooser.value = Tools.getColor();
 			chooser.addEventListener("input", updateSelectedColor);
 			chooser.addEventListener("change", updateSelectedColor);
 		}
@@ -105,7 +106,13 @@
 
 	function presetClicked(evt) {
 		var color = evt.currentTarget.getAttribute("data-color");
-		var chooser = document.getElementById("chooseColor");
+		setColor(color);
+	}
+
+	function setColor(color) {
+		var state = document.getElementById("chooseColor");
+		var chooser = document.getElementById("pencilColorInput");
+		if(state)state.value = color;
 		if(chooser){
 			chooser.value = color;
 			chooser.style.backgroundColor = color;
@@ -114,6 +121,11 @@
 	}
 
 	function updateSelectedColor() {
+		var chooser = document.getElementById("pencilColorInput");
+		if(chooser){
+			var state = document.getElementById("chooseColor");
+			if(state)state.value = chooser.value;
+		}
 		var color = Tools.getColor().toLowerCase();
 		var current = document.getElementsByClassName("pencil-current-color")[0];
 		if(current)current.style.backgroundColor = color;
@@ -129,7 +141,10 @@
 
 	function updateColorAfterExternalPicker(evt) {
 		if($(evt.target).closest(".canvascolor-container").length){
-			setTimeout(updateSelectedColor, 0);
+			setTimeout(function () {
+				var chooser = document.getElementById("pencilColorInput");
+				if(chooser)setColor(chooser.value);
+			}, 0);
 		}
 	}
 
