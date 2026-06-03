@@ -1,6 +1,6 @@
 (function sheetTool() {
-	var SHEET_WIDTH = 1080;
-	var SHEET_HEIGHT = 1920;
+	var SHEET_WIDTH = 1350;
+	var SHEET_HEIGHT = 2400;
 	var SHEET_MARGIN = 80;
 
 	function clamp(value, min, max) {
@@ -30,6 +30,7 @@
 		};
 		draw(msg);
 		Tools.send(msg, "Sheet");
+		selectSheet(Tools.svg.getElementById(msg.id));
 	}
 
 	function draw(msg) {
@@ -52,13 +53,27 @@
 		if(msg.data){
 			rect.setAttribute("data-lock", msg.data);
 		}
+		rect.onmousedown = function (evt) {
+			var activeTool = Tools.curTool && Tools.curTool.name;
+			if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
+			evt.preventDefault();
+			evt.stopPropagation();
+			if(evt.stopImmediatePropagation)evt.stopImmediatePropagation();
+			selectSheet(rect);
+		};
 
 		Tools.group.appendChild(rect);
 	}
 
+	function selectSheet(rect) {
+		if(rect && Tools.activateTransformTarget){
+			Tools.activateTransformTarget(rect);
+		}
+	}
+
 	Tools.add({
 		"name": "Sheet",
-		"icon": "□",
+		"icon": "Sheet",
 		"iconHTML": "<span class='sheet-tool-icon'></span>",
 		"listeners": {},
 		"draw": draw,

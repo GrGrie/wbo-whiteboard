@@ -125,12 +125,13 @@ Tools.connect();
 
 
 Tools.boardName = (function () {
-	var path = window.location.search.split("?board=");
-	if(path.length!=1){
-		return path[1];
+	if(window.URLSearchParams){
+		var board = new URLSearchParams(window.location.search).get("board");
+		if(board)return board;
 	}
-	path = window.location.pathname.split("/");
-	return path[path.length - 1];
+	var path = window.location.pathname.split("/");
+	var boardName = path[path.length - 1];
+	return boardName === "board.html" ? "anonymous" : boardName;
 })();
 
 

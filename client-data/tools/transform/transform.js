@@ -436,6 +436,14 @@
 		lockOpen = false;
 		document.getElementById("shape-lock").style.display = "none";
 	};
+
+	Tools.activateTransformTarget = function (target) {
+		if(!target || !target.id)return;
+		if(!Tools.curTool || Tools.curTool.name !== "Transform"){
+			Tools.change("Transform");
+		}
+		initialize(target);
+	};
 	
 	var svg = Tools.svg;
 

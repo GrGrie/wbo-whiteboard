@@ -1,4 +1,6 @@
 var iolib = require('socket.io')
+	, fs = require('fs')
+	, path = require('path')
 	, BoardData = require("./boardData.js").BoardData
 	, config = require("./configuration.js");
 
@@ -23,6 +25,15 @@ function startIO(app) {
 	return io;
 }
 
+function boardFile(name) {
+	return path.join(config.HISTORY_DIR, "board-" + encodeURIComponent(name) + ".json");
+}
+
+function boardExists(name) {
+	if (!name || name === "anonymous") return true;
+	return fs.existsSync(boardFile(name));
+}
+
 /** Returns a promise to a BoardData with the given name*/
 function getBoard(name) {
 	if (boards.hasOwnProperty(name)) {
@@ -44,6 +55,12 @@ function socketConnection(socket) {
 	function joinBoard(name) {
 		// Default to the public board
 		if (!name) name = "anonymous";
+		if (!boardExists(name)) {
+			socket.emit("broadcast", { type: "error", message: "Board does not exist." });
+			socket.disconnect(true);
+			console.warn("Unauthorized board creation attempt: " + name);
+			return Promise.resolve(null);
+		}
 
 		// Join the board
 		socket.join(name);
@@ -57,6 +74,7 @@ function socketConnection(socket) {
 
 	socket.on("getboard", noFail(function onGetBoard(name) {
 		joinBoard(name).then(board => {
+			if (!board) return;
 			//Send all the board's data as soon as it's loaded
 			var batches = board.getAll();
 			socket.emit("broadcast", { _children: (batches[0] || []),_more:(batches.length>1),userCount:board.users.size});
@@ -93,6 +111,10 @@ function socketConnection(socket) {
 		}
 
 		var boardName = message.board || "anonymous";
+		if (!boardExists(boardName)) {
+			socket.disconnect(true);
+			return;
+		}
 		if (!socket.rooms.hasOwnProperty(boardName)) socket.join(boardName);
 
 		getBoard(boardName).then(board => {

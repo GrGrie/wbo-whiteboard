@@ -76,21 +76,88 @@ function handler(request, response) {
 
 const boardTemplate = new templating.BoardTemplate(path.join(config.WEBROOT, 'board.html'));
 const indexTemplate = new templating.Template(path.join(config.WEBROOT, 'index.html'));
+const appRoot = path.dirname(__dirname);
+const secrets = readSecrets(path.join(appRoot, ".secrets"));
+
+function readSecrets(file) {
+	var values = {};
+	try {
+		var text = fs.readFileSync(file, "utf8");
+		text.split(/\r?\n/).forEach(function (line) {
+			var match = line.match(/^\s*([^#=\s]+)\s*=\s*(.*?)\s*$/);
+			if (match) values[match[1].toUpperCase()] = match[2];
+		});
+	} catch (err) {
+		console.warn("Unable to read .secrets. New board creation will require configured credentials.");
+	}
+	return values;
+}
+
+function boardFile(name) {
+	return path.join(config.HISTORY_DIR, "board-" + encodeURIComponent(name) + ".json");
+}
+
+function boardExists(name) {
+	if (!name || name === "anonymous") return true;
+	return fs.existsSync(boardFile(name));
+}
+
+function isAuthorized(query) {
+	return secrets.LOGIN &&
+		secrets.PASSWORD &&
+		query &&
+		query.login === secrets.LOGIN &&
+		query.password === secrets.PASSWORD;
+}
+
+function serveUnauthorized(response) {
+	response.writeHead(302, { Location: "/?auth=failed" });
+	response.end();
+}
+
+function ensureBoardFile(name) {
+	if (!config.SAVE_BOARDS || boardExists(name)) return;
+	fs.mkdirSync(config.HISTORY_DIR, { recursive: true });
+	fs.writeFileSync(boardFile(name), "{}");
+}
+
+function cleanBoardRedirect(response, boardName) {
+	response.writeHead(302, { Location: "/board.html?board=" + encodeURIComponent(boardName) });
+	response.end();
+}
 
 function handleRequest(request, response) {
 	var parsedUrl = url.parse(request.url, true);
 	var parts = parsedUrl.pathname.split('/');
 	if (parts[0] === '') parts.shift();
+	var boardName = parsedUrl.query.board;
+
+	if (parts[0] === "board.html" && boardName) {
+		if (!boardExists(boardName)) {
+			if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
+			ensureBoardFile(boardName);
+			return cleanBoardRedirect(response, boardName);
+		}
+		if (parsedUrl.query.login || parsedUrl.query.password) {
+			return cleanBoardRedirect(response, boardName);
+		}
+	}
 
 	if (parts[0] === "boards") {
 		// "boards" refers to the root directory
 		if (parts.length === 1 && parsedUrl.query.board) {
 			// '/boards?board=...' This allows html forms to point to boards
+			if (!boardExists(parsedUrl.query.board)) {
+				if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
+				ensureBoardFile(parsedUrl.query.board);
+			}
 			var headers = { Location: 'boards/' + encodeURIComponent(parsedUrl.query.board) };
 			response.writeHead(301, headers);
 			response.end();
 		} else if (parts.length === 2 && request.url.indexOf('.') === -1) {
 			// If there is no dot and no directory, parts[1] is the board name
+			var routedBoardName = decodeURIComponent(parts[1]);
+			if (!boardExists(routedBoardName)) return serveUnauthorized(response);
 			boardTemplate.serve(request, response);
 		} else { // Else, it's a resource
 			request.url = "/" + parts.slice(1).join('/');
