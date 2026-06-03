@@ -455,7 +455,7 @@ Tools.HTML = {
 	addStylesheet: function (href) {
 		//Adds a css stylesheet to the html or svg document
 		var link = document.createElement("link");
-		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260603-2";
+		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260603-4";
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		document.head.appendChild(link);
@@ -1169,8 +1169,8 @@ function resize_view(){
 	//Scale the canvas on load
 	var screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
 	var screenHeight =  Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-	svgWidth = Tools.svg.width.baseVal.value = Math.max(screenWidth + 2000, screenWidth * 2.5);
-	svgHeight = Tools.svg.height.baseVal.value =  Math.max(screenHeight + 2000, screenHeight * 2.5);
+	svgWidth = Tools.svg.width.baseVal.value = Math.max(screenWidth + 4000, screenWidth * 5);
+	svgHeight = Tools.svg.height.baseVal.value =  Math.max(screenHeight + 4000, screenHeight * 5);
 	Tools.svg.setAttributeNS(null, "viewBox", "0 0 " + svgWidth + " " + svgHeight);
 }
 
