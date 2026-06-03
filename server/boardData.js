@@ -29,6 +29,11 @@ var fs = require('fs')
 , path = require("path")
 , config = require("./configuration.js");
 
+function ensureHistoryDir() {
+	if (config.SAVE_BOARDS) {
+		fs.mkdirSync(config.HISTORY_DIR, { recursive: true });
+	}
+}
 
 /**
  * Represents a board.
@@ -501,6 +506,7 @@ BoardData.prototype.save = function (file) {
 	this.lastSaveDate = Date.now();
 	this.clean();
 	if(config.SAVE_BOARDS){  //TODO Need to updat this
+		ensureHistoryDir();
 		if (!file) file = this.file;
 		var board_txt = JSON.stringify(this.elements);
 		var that = this;
@@ -511,6 +517,27 @@ BoardData.prototype.save = function (file) {
 				console.log("Successfully saved board: " + that.name);
 			}
 		})
+	}
+};
+
+/** Saves the board immediately. Used when the last user disconnects. */
+BoardData.prototype.saveSync = function (file) {
+	if (this.saveTimeoutId !== undefined) {
+		clearTimeout(this.saveTimeoutId);
+		this.saveTimeoutId = undefined;
+	}
+	this.lastSaveDate = Date.now();
+	this.clean();
+	if(config.SAVE_BOARDS){
+		ensureHistoryDir();
+		if (!file) file = this.file;
+		var board_txt = JSON.stringify(this.elements);
+		try {
+			fs.writeFileSync(file, board_txt);
+			console.log("Successfully saved board: " + this.name);
+		} catch (err) {
+			console.trace(new Error("Unable to save the board: " + err));
+		}
 	}
 };
 

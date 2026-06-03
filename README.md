@@ -85,6 +85,22 @@ In the lower right-hand corner, you will find the geometry component. The geomet
 
 If you have your own web server, and want to run a private instance of WB on it, you can. It should be very easy to get it running on your own server.
 
+### Running with Docker
+
+The Docker image saves boards by default in `/opt/app/server-data`. For this fork, the easiest persistent setup is:
+
+```
+docker compose up -d --build
+```
+
+This starts the `techbrain-wbo` container, publishes it on host port `5002`, and stores board files in `./server-data`.
+
+If you prefer a plain Docker command, use the helper script:
+
+```
+sh ./run-docker.sh
+```
+
 ### Running the code using NPM
 
 

@@ -114,7 +114,7 @@ function socketConnection(socket) {
 					var userCount = board.users.size;
 					console.log(userCount + " users in " + room + " Socket ID: " + socket.id);
 					if (userCount === 0) {
-						board.save();
+						board.saveSync();
 						delete boards[room];
 					}else{
 						socket.broadcast.to(board.name).emit('broadcast', {userCount:board.users.size});

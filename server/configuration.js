@@ -1,12 +1,18 @@
 const path = require("path");
 const app_root = path.dirname(__dirname); // Parent of the directory where this file is
 
+function envBoolean(name, defaultValue) {
+    const value = process.env[name];
+    if (value === undefined) return defaultValue;
+    return !/^(false|0|no|off)$/i.test(value);
+}
+
 module.exports = {
     /** Port on which the application will listen */
     PORT: parseInt(process.env['PORT']) || 8080,
 
     /** Use HTTPS */
-    HTTPS: process.env['HTTPS'] || false,
+    HTTPS: envBoolean('HTTPS', false),
 
     PRIVATE_KEY_PATH:  "../../../../ssl/private.key",
 
@@ -15,10 +21,10 @@ module.exports = {
     CA_BUNDLE_PATH: "../../../../ssl/ca_bundle.crt",
 
      /** Save board data */
-     SAVE_BOARDS: process.env['SAVE_BOARDS'] || false,
+     SAVE_BOARDS: envBoolean('SAVE_BOARDS', true),
 
      /** Use a template to validate board data */
-     ENFORCE_BOARD_TEMPLATE: process.env['ENFORCE_BOARD_TEMPLATE'] || false,
+     ENFORCE_BOARD_TEMPLATE: envBoolean('ENFORCE_BOARD_TEMPLATE', false),
 
     /** Path to the directory where boards will be saved by default */
     HISTORY_DIR: process.env['WBO_HISTORY_DIR'] || path.join(app_root, "server-data"),
@@ -66,7 +72,7 @@ module.exports = {
     MAX_BOARD_BYTES: parseInt(process.env['MAX_BOARD_BYTES']) || 52428800,
 
      /** Use a template to validate board data */
-     DISPLAY_POINTERS: process.env['DISPLAY_POINTERS'] || true
+     DISPLAY_POINTERS: envBoolean('DISPLAY_POINTERS', true)
 
 }
 
