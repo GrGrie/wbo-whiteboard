@@ -1084,13 +1084,19 @@ Tools.decomposeMatrix = function(mat) {
 
 
 Tools.getColor = (function color() {
-	var chooser = document.getElementById("chooseColor");
-	// Init with a random color
 	var clrs = ["#001f3f", "#0074D9", "#7FDBFF", "#39CCCC", "#3D9970",
 		"#2ECC40", "#01FF70", "#FFDC00", "#FF851B", "#FF4136",
 		"#85144b", "#F012BE", "#B10DC9", "#111111", "#AAAAAA"];
-	var value = chooser.value = clrs[Math.random() * clrs.length | 0];
-	return function () { return chooser.value; };
+	var value = clrs[Math.random() * clrs.length | 0];
+
+	return function () {
+		var chooser = document.getElementById("chooseColor");
+		if (chooser) {
+			if (!chooser.value) chooser.value = value;
+			value = chooser.value;
+		}
+		return value;
+	};
 })();
 
 Tools.setSize = (function size() {

@@ -51,9 +51,12 @@
 			Tools.setSize(curPen.eraserSize);
 			Tools.showMarker=true;
 		}
+		if(!menuInitialized)initMenu();
+		Tools.menus["Pencil"].show(true);
 	};
 
 	function onQuit(){
+		if(Tools.menus["Pencil"])Tools.menus["Pencil"].show(false);
 		if(curPen.mode=="White out"){
 			Tools.setSize(curPen.penSize);
 		}
@@ -63,6 +66,72 @@
 			cursor.remove();
 		}
 	};
+
+	var colorPresets = [
+		"#111111", "#666666", "#ffffff", "#ff4136", "#ff851b",
+		"#ffdc00", "#2ecc40", "#0074d9", "#001f3f", "#7fdbff",
+		"#39cccc", "#b10dc9", "#f012be", "#85144b", "#aaaaaa"
+	];
+	var menuInitialized = false;
+
+	function buildColorMenu() {
+		var presets = colorPresets.map(function (color) {
+			return '<button type="button" class="pencil-color-preset" data-color="' + color + '" style="background-color:' + color + '" title="' + color + '"></button>';
+		}).join("");
+
+		return '<div class="pencil-color-menu">' +
+				'<div class="pencil-color-presets">' + presets + '</div>' +
+				'<label class="pencil-color-picker" for="chooseColor">' +
+					'<span class="pencil-current-color"></span>' +
+					'<input type="color" id="chooseColor" value="' + Tools.getColor() + '" />' +
+				'</label>' +
+			'</div>';
+	}
+
+	function initMenu() {
+		var chooser = document.getElementById("chooseColor");
+		var presets = document.getElementsByClassName("pencil-color-preset");
+		for(var i = 0; i < presets.length; i++){
+			presets[i].addEventListener("click", presetClicked);
+		}
+		if(chooser){
+			chooser.addEventListener("input", updateSelectedColor);
+			chooser.addEventListener("change", updateSelectedColor);
+		}
+		document.addEventListener("click", updateColorAfterExternalPicker, true);
+		updateSelectedColor();
+		menuInitialized = true;
+	}
+
+	function presetClicked(evt) {
+		var color = evt.currentTarget.getAttribute("data-color");
+		var chooser = document.getElementById("chooseColor");
+		if(chooser){
+			chooser.value = color;
+			chooser.style.backgroundColor = color;
+		}
+		updateSelectedColor();
+	}
+
+	function updateSelectedColor() {
+		var color = Tools.getColor().toLowerCase();
+		var current = document.getElementsByClassName("pencil-current-color")[0];
+		if(current)current.style.backgroundColor = color;
+		var presets = document.getElementsByClassName("pencil-color-preset");
+		for(var i = 0; i < presets.length; i++){
+			if(presets[i].getAttribute("data-color").toLowerCase() == color){
+				presets[i].classList.add("selected");
+			}else{
+				presets[i].classList.remove("selected");
+			}
+		}
+	}
+
+	function updateColorAfterExternalPicker(evt) {
+		if($(evt.target).closest(".canvascolor-container").length){
+			setTimeout(updateSelectedColor, 0);
+		}
+	}
 
 
 	function startLine(x, y, evt) {
@@ -286,6 +355,18 @@
         },
 		"draw": draw,
 		"toggle":toggle,
+		"menu":{
+			"title":"Color",
+			"content": buildColorMenu(),
+			"listener": function (elem, onButton, onMenu, e) {
+				if($(e.target).closest(".canvascolor-container").length)return false;
+				if(!onMenu&&!onButton){
+					e.stopPropagation();
+					return true;
+				}
+				return false;
+			}
+		},
 		"onstart":onStart,
 		"onquit":onQuit,
 		"mouseCursor": "crosshair",

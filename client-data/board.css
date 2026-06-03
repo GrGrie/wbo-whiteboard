@@ -406,21 +406,6 @@ button.close.window-button{
 .tooltip .tooltip-inner {
     background-color: #008ec3;
 }
-#chooseColor {
-	width:100%;
-	height:100%;
-line-height:30x;
-	border:0px solid black;
-	border-radius:0px;
-	color:black;
-	text-shadow: 0 0 0px white;
-	display: block;
-	width: 100%;
-	margin: 0px;
-	padding:0px;
-}
-
-
 .rangeChooser {
 	display: block;
 	border: 0;
