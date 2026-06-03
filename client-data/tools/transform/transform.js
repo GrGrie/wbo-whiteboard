@@ -240,6 +240,7 @@
 				}
 				
 				Tools.drawAndSend(msg);
+				positionLockButton();
 			}
 			lastTime = performance.now();
 		}
@@ -419,6 +420,7 @@
 
 	//Shape locking
 	function lockShape() {
+		if(!currShape)return;
 		var lock = document.getElementById(currShape.id).getAttribute("data-lock");
 		lock = (lock==1?0:1);
 		var msg = {
@@ -443,17 +445,43 @@
 
 	var lockOpen = false;
 
+	function positionLockButton() {
+		if(!currShape)return;
+		var elem = document.getElementById("shape-lock");
+		var frame = currShape.svgNode;
+		var target = document.getElementById(currShape.id);
+		var box = frame && frame.getBoundingClientRect ? frame.getBoundingClientRect() :
+			(target && target.getBoundingClientRect ? target.getBoundingClientRect() : null);
+		if(!box)return;
+
+		var x = box.left + box.width / 2 - 18;
+		var y = box.top - 48;
+		if(y < 8)y = box.bottom + 12;
+		x = Math.max(52, Math.min(window.innerWidth - 44, x));
+		y = Math.max(8, Math.min(window.innerHeight - 44, y));
+
+		elem.style.left = Math.round(x) + "px";
+		elem.style.top = Math.round(y) + "px";
+		elem.style.right = "auto";
+		elem.style.bottom = "auto";
+	}
+
 	//Show lock
 	function showLock(locked) {
 		lockOpen = true;
 		var elem = document.getElementById("shape-lock");
-		elem.style.display = "block";
+		elem.style.display = "flex";
+		positionLockButton();
 		if(locked){
 			elem.classList.add("locked");
 			document.getElementById("shape-lock-icon").setAttribute("class","fas fa-lock");
+			elem.setAttribute("title", "Unlock selected object");
+			elem.setAttribute("aria-label", "Unlock selected object");
 		}else{
 			elem.classList.remove("locked");
 			document.getElementById("shape-lock-icon").setAttribute("class","fas fa-unlock");
+			elem.setAttribute("title", "Lock selected object");
+			elem.setAttribute("aria-label", "Lock selected object");
 		}
 	};
 
