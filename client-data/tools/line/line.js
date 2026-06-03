@@ -162,7 +162,7 @@
 					if(Tools.useLayers){
 						if(line.getAttribute("class")!="layer"+Tools.layer){
 							line.setAttribute("class","layer-"+Tools.layer);
-							Tools.group.appendChild(line);
+							Tools.placeElement(line, "drawing");
 						}
 					}
 				}
@@ -220,7 +220,7 @@
 			document.getElementById("defs").appendChild(marker);
 			line.setAttribute("marker-end", "url(#arrw_"+lineData.id+")");
 		}
-		Tools.group.appendChild(line);
+		Tools.placeElement(line, "drawing");
 		return line;
 	}
 
@@ -270,7 +270,7 @@
 			document.getElementById("defs").appendChild(marker);
 			line.setAttribute("marker-end", "url(#arrw_"+lineData.id+")");
 		}
-		Tools.group.appendChild(line);
+		Tools.placeElement(line, "drawing");
 		return line;
 	}
 

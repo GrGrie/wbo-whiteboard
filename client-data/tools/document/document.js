@@ -52,6 +52,7 @@ function draw(msg) {
     var img = Tools.createSVGElement("image");
     img.id=msg.id;
     img.setAttribute("class", "layer-"+Tools.layer);
+    img.setAttribute("data-plane", "document");
     img.setAttributeNS(xlinkNS, "href", msg.src);
     img.x.baseVal.value = msg['x'];
     img.y.baseVal.value = msg['y'];
@@ -59,7 +60,17 @@ function draw(msg) {
     img.setAttribute("height", 400);
     if(msg.transform)
 			img.setAttribute("transform",msg.transform);
-    Tools.group.appendChild(img);
+    if(msg.data !== undefined)
+            img.setAttribute("data-lock", msg.data);
+    img.onmousedown = function (evt) {
+        var activeTool = Tools.curTool && Tools.curTool.name;
+        if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        if(evt.stopImmediatePropagation)evt.stopImmediatePropagation();
+        if(Tools.activateTransformTarget)Tools.activateTransformTarget(img);
+    };
+    Tools.placeElement(img, "document");
     
 }
 

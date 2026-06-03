@@ -136,7 +136,7 @@
 					if(Tools.useLayers){
 						if(shape.getAttribute("class")!="layer"+Tools.layer){
 							shape.setAttribute("class","layer-"+Tools.layer);
-							Tools.group.appendChild(shape);
+							Tools.placeElement(shape, "drawing");
 						}
 					}
 				};
@@ -179,7 +179,7 @@
 			shape.setAttribute("stroke-dasharray", "10 10" || "10 10");
 		}
 		shape.setAttribute("opacity", Math.max(0.1, Math.min(1, data.opacity)) || 1);
-		Tools.group.appendChild(shape);
+		Tools.placeElement(shape, "drawing");
 		return shape;
 	}
 

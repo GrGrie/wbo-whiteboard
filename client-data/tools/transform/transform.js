@@ -123,6 +123,7 @@
 				var ry2 = rect.y2*Tools.scale-document.documentElement.scrollTop;
 				$("#layer-"+Tools.layer).find("*").each(
 					function( i, el ) {
+						if(el.getAttribute && el.getAttribute("data-plane-group"))return;
 						var r = el.getBoundingClientRect();
 						if(insideRect(r.x,r.y,r.width,r.height,rx,ry,rx2,ry2)){
 							var r2 = {};
@@ -258,7 +259,7 @@
 						if(Tools.useLayers){
 							if(elem.getAttribute("class")!="layer"+Tools.layer){
 								elem.setAttribute("class","layer-"+Tools.layer);
-								Tools.group.appendChild(elem);
+								Tools.placeElement(elem, Tools.getObjectPlane(elem));
 							}
 						}
 						var idSelected = false;
@@ -283,7 +284,7 @@
 						if(Tools.useLayers){
 							if(elem.getAttribute("class")!="layer"+Tools.layer){
 								elem.setAttribute("class","layer-"+Tools.layer);
-								Tools.group.appendChild(elem);
+								Tools.placeElement(elem, Tools.getObjectPlane(elem));
 							}
 						}
 						var idSelected = false;
@@ -303,7 +304,19 @@
 					if(data.data !== undefined){
 						if (elem === null) return; //console.error("Tried to update an element that does not exist.");
 						elem.setAttribute("data-lock", data.data);
-						if(lockOpen && currShape.id==data.id)showLock(data.data)
+						if(lockOpen && currShape && currShape.id==data.id){
+							currShape.locked = data.data == 1;
+							if(currShape.locked){
+								currShape.showHandles(false);
+								currShape.selectHandles(false);
+								currShape.unregisterHandles();
+							}else{
+								mouser.registerShape(currShape);
+								currShape.showHandles(true);
+								currShape.selectHandles(false);
+							}
+							showLock(data.data);
+						}
 					}
 				}
 				break;
@@ -381,12 +394,15 @@
 			shape.realize();
 			shape.callback = continueTransforming;
 			deactivateCurrentShape();
-            mouser.registerShape(shape);
-            shape.showHandles(true);
-            shape.selectHandles(false);
+			var locked = !Array.isArray(target) && target.getAttribute("data-lock") == 1;
+			shape.locked = locked;
+			if(!locked){
+				mouser.registerShape(shape);
+				shape.showHandles(true);
+				shape.selectHandles(false);
+			}
 			currShape = shape;
 			if(!Array.isArray(target)){
-				var locked = target.getAttribute("data-lock");
 				showLock(locked==1);
 			}
 		}
@@ -412,6 +428,16 @@
 			"nostamp":true
 		};
 		showLock(lock);
+		currShape.locked = lock == 1;
+		if(lock==1){
+			currShape.showHandles(false);
+			currShape.selectHandles(false);
+			currShape.unregisterHandles();
+		}else{
+			mouser.registerShape(currShape);
+			currShape.showHandles(true);
+			currShape.selectHandles(false);
+		}
 		Tools.drawAndSend(msg);
 	};
 

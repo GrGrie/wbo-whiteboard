@@ -30,13 +30,10 @@
 	var curLineId = "",
 		startX=0,
 		startY=0,
-		penIcons = ["✏","W"],
 		lastTime = performance.now(), //The time at which the last point was drawn
 		end=false;
 	var curPen = {
-		"mode":"Pencil",
-		"penSize":3,
-		"eraserSize":16
+		"penSize":3
 	};
 	//The data of the message that will be sent for every new point
 	function PointMessage(x, y) {
@@ -47,19 +44,12 @@
 	}
 
 	function onStart(){
-		if(curPen.mode=="White out"){
-			Tools.setSize(curPen.eraserSize);
-			Tools.showMarker=true;
-		}
 		if(!menuInitialized)initMenu();
 		Tools.menus["Pencil"].show(true);
 	};
 
 	function onQuit(){
 		if(Tools.menus["Pencil"])Tools.menus["Pencil"].show(false);
-		if(curPen.mode=="White out"){
-			Tools.setSize(curPen.penSize);
-		}
 		Tools.showMarker=false;
 		var cursor = Tools.svg.getElementById("mycursor");
 		if(cursor){
@@ -159,7 +149,7 @@
 		Tools.drawAndSend({
 			'type': 'line',
 			'id': curLineId,
-			'color': (curPen.mode=="Pencil"?Tools.getColor():"white"),
+			'color': Tools.getColor(),
 			'size': Tools.getSize(),
 			'opacity': Tools.getOpacity()
 		});
@@ -216,7 +206,7 @@
 					if(Tools.useLayers){
 						if(line.getAttribute("class")!="layer"+Tools.layer){
 							line.setAttribute("class","layer-"+Tools.layer);
-							Tools.group.appendChild(line);
+							Tools.placeElement(line, "drawing");
 						}
 					}
 				};
@@ -329,31 +319,10 @@
 		if(lineData.transform)
 			line.setAttribute("transform",lineData.transform);
 		line.setAttribute("opacity", Math.max(0.1, Math.min(1, lineData.opacity)) || 1);
-		Tools.group.appendChild(line);
+		Tools.placeElement(line, "drawing");
 		return line;
 	}
 
-
-	function toggle(elem){
-		var index = 0;
-		if(curPen.mode=="Pencil"){
-			curPen.mode="White out"
-			curPen.penSize=Tools.getSize();
-			Tools.setSize(curPen.eraserSize);
-			Tools.showMarker=true;
-			index=1;
-		}else{
-			curPen.mode="Pencil"
-			curPen.erasurSize=Tools.getSize();
-			Tools.setSize(curPen.penSize);
-			Tools.showMarker=false;
-			var cursor = Tools.svg.getElementById("mycursor");
-			if(cursor){
-				cursor.remove();
-			}
-		}
-		elem.getElementsByClassName("tool-icon")[0].textContent = penIcons[index];
-	};
 
 	Tools.add({ //The new tool
 		// "name": "Pencil",
@@ -369,7 +338,6 @@
             "changeTool":"1"
         },
 		"draw": draw,
-		"toggle":toggle,
 		"menu":{
 			"title":"Color",
 			"content": buildColorMenu(),

@@ -26,7 +26,8 @@
 			x: Math.round(x),
 			y: Math.round(y),
 			w: Math.round(width),
-			h: Math.round(height)
+			h: Math.round(height),
+			data: 1
 		};
 		draw(msg);
 		Tools.send(msg, "Sheet");
@@ -47,12 +48,11 @@
 		rect.setAttribute("fill", "white");
 		rect.setAttribute("stroke", "#d9d9d9");
 		rect.setAttribute("stroke-width", "2");
+		rect.setAttribute("data-plane", "sheet");
 		if(msg.transform){
 			rect.setAttribute("transform", msg.transform);
 		}
-		if(msg.data){
-			rect.setAttribute("data-lock", msg.data);
-		}
+		rect.setAttribute("data-lock", msg.data !== undefined ? msg.data : 1);
 		rect.onmousedown = function (evt) {
 			var activeTool = Tools.curTool && Tools.curTool.name;
 			if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
@@ -62,7 +62,7 @@
 			selectSheet(rect);
 		};
 
-		Tools.group.appendChild(rect);
+		Tools.placeElement(rect, "sheet");
 	}
 
 	function selectSheet(rect) {

@@ -619,6 +619,122 @@ Tools.drawAndSend = function (data) {
 	Tools.send(data);
 };
 
+Tools.getPastePosition = function (offset) {
+	offset = offset || 0;
+	var scale = Tools.getScale();
+	return {
+		x: Math.round((document.documentElement.scrollLeft + 120) / scale + offset),
+		y: Math.round((document.documentElement.scrollTop + 120) / scale + offset)
+	};
+};
+
+function isPasteTargetEditable(target) {
+	if (!target) return false;
+	if (target.isContentEditable) return true;
+	if ($(target).is("textarea,input,select")) return true;
+	if ($(target).closest(".CodeMirror, [contenteditable=true]").length) return true;
+	return false;
+}
+
+function drawAndBroadcastWithTool(toolName, data) {
+	var tool = Tools.list && Tools.list[toolName];
+	if (!tool || typeof tool.draw !== "function") return false;
+	tool.draw(data, true);
+	Tools.send(data, toolName);
+	return true;
+}
+
+function pasteTextAsBoardText(text) {
+	text = (text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	if (!text.trim()) return false;
+
+	var lines = text.split("\n");
+	var pos = Tools.getPastePosition();
+	var size = 24;
+	var lineHeight = Math.round(size * 1.35);
+	var hasSentLine = false;
+
+	for (var i = 0, visibleLine = 0; i < lines.length; i++) {
+		var line = lines[i].trim();
+		if (!line) {
+			visibleLine++;
+			continue;
+		}
+		var msg = {
+			type: "new",
+			id: Tools.generateUID("t"),
+			color: "#111111",
+			size: size,
+			opacity: 1,
+			x: pos.x,
+			y: pos.y + visibleLine * lineHeight,
+			txt: line.slice(0, 500)
+		};
+		if (drawAndBroadcastWithTool("Text", msg)) hasSentLine = true;
+		visibleLine++;
+	}
+
+	return hasSentLine;
+}
+
+function pasteImageFileAsDocument(file, offset) {
+	if (!file) return;
+	var reader = new FileReader();
+	reader.onload = function (e) {
+		var image = new Image();
+		image.onload = function () {
+			var pos = Tools.getPastePosition(offset);
+			var msg = {
+				id: Tools.generateUID("doc"),
+				type: "doc",
+				src: image.src,
+				w: image.width || 300,
+				h: image.height || 300,
+				x: pos.x,
+				y: pos.y
+			};
+			drawAndBroadcastWithTool("Document", msg);
+		};
+		image.src = e.target.result;
+	};
+	reader.readAsDataURL(file);
+}
+
+Tools.handleBoardPaste = function (evt) {
+	if (isPasteTargetEditable(evt.target)) return;
+
+	var clipboard = evt.clipboardData || window.clipboardData;
+	if (!clipboard) return;
+
+	var imageFiles = [];
+	var items = clipboard.items || [];
+	for (var i = 0; i < items.length; i++) {
+		if (items[i].kind === "file" && items[i].type.indexOf("image/") === 0) {
+			var file = items[i].getAsFile();
+			if (file) imageFiles.push(file);
+		}
+	}
+
+	if (!imageFiles.length && clipboard.files) {
+		for (var j = 0; j < clipboard.files.length; j++) {
+			if (clipboard.files[j].type.indexOf("image/") === 0) imageFiles.push(clipboard.files[j]);
+		}
+	}
+
+	if (imageFiles.length) {
+		evt.preventDefault();
+		imageFiles.forEach(function (file, index) {
+			pasteImageFileAsDocument(file, index * 24);
+		});
+		return;
+	}
+
+	var text = clipboard.getData ? clipboard.getData("text/plain") : "";
+	if (text && pasteTextAsBoardText(text)) evt.preventDefault();
+};
+
+document.addEventListener("paste", Tools.handleBoardPaste, false);
+
 //Object containing the messages that have been received before the corresponding tool
 //is loaded. keys : the name of the tool, values : array of messages for this tool
 Tools.pendingMessages = {};
@@ -957,6 +1073,46 @@ Tools.createSVGElement = function (name, attrs) {
 	Object.keys(attrs).forEach(function (key, i) {
 		elem.setAttributeNS(null, key, attrs[key]);
 	});
+	return elem;
+};
+
+Tools.getObjectPlane = function (elem) {
+	if (!elem) return "drawing";
+	var plane = elem.getAttribute && elem.getAttribute("data-plane");
+	if (plane) return plane;
+	if (elem.id && elem.id.indexOf("sheet") === 0) return "sheet";
+	if (elem.localName === "image") return "document";
+	return "drawing";
+};
+
+Tools.getPlaneGroup = function (plane) {
+	var groupId = "plane-" + Tools.layer + "-" + plane;
+	var group = Tools.svg.getElementById(groupId);
+	if (!group) {
+		group = Tools.createSVGElement("g", {
+			id: groupId,
+			"data-plane-group": plane
+		});
+	}
+
+	var order = ["sheet", "document", "drawing"];
+	for (var i = 0; i < order.length; i++) {
+		var existing = Tools.svg.getElementById("plane-" + Tools.layer + "-" + order[i]);
+		if (existing && existing.parentNode === Tools.group) existing.remove();
+	}
+	for (var j = 0; j < order.length; j++) {
+		var ordered = Tools.svg.getElementById("plane-" + Tools.layer + "-" + order[j]);
+		if (ordered) Tools.group.appendChild(ordered);
+		if (order[j] === plane && !group.parentNode) Tools.group.appendChild(group);
+	}
+
+	return group;
+};
+
+Tools.placeElement = function (elem, plane) {
+	plane = plane || Tools.getObjectPlane(elem);
+	if (elem.setAttribute) elem.setAttribute("data-plane", plane);
+	Tools.getPlaneGroup(plane).appendChild(elem);
 	return elem;
 };
 

@@ -170,7 +170,7 @@
 					if(Tools.useLayers){
 						if(textField.getAttribute("class")!="layer"+Tools.layer){
 							textField.setAttribute("class","layer-"+Tools.layer);
-							Tools.group.appendChild(textField);
+							Tools.placeElement(textField, "drawing");
 						}
 					}
 				};
@@ -202,7 +202,7 @@
 		}
 		if(fieldData.transform)
 			elem.setAttribute("transform",fieldData.transform);
-		Tools.group.appendChild(elem);
+		Tools.placeElement(elem, "drawing");
 		return elem;
 	}
 

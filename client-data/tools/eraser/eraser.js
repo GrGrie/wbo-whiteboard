@@ -101,6 +101,8 @@
 				var ry2 = rect.y2*Tools.scale-document.documentElement.scrollTop;
 				$("#layer-"+Tools.layer).find("*").each(
 					function( i, el ) {
+						if(el.getAttribute && el.getAttribute("data-plane-group"))return;
+						if(isLocked(el))return;
 						var r = el.getBoundingClientRect();
 						if(insideRect(r.x,r.y,r.width,r.height,rx,ry,rx2,ry2)){
 							targets.push(el);
@@ -135,6 +137,10 @@
 			}
 		}
 		return false;
+	}
+
+	function isLocked(elem){
+		return elem && elem.getAttribute && elem.getAttribute("data-lock") == 1;
 	}
 
 
@@ -220,13 +226,14 @@
 				if(Array.isArray(data.id)){
 					for(var i = 0;i<data.id.length;i++){
 						elem = svg.getElementById(data.id[i]);
-						if (elem !== null){ //console.error("Eraser: Tried to delete an element that does not exist.");
+						if (elem !== null && !isLocked(elem)){ //console.error("Eraser: Tried to delete an element that does not exist.");
 							elem.remove();
 						}
 					}
 				}else{
 					elem = svg.getElementById(data.id);
 					if (elem === null) return; //console.error("Eraser: Tried to delete an element that does not exist.");
+					if (isLocked(elem)) return;
 					elem.remove();
 				}
 				break;
