@@ -44,7 +44,8 @@ main {
 	position: relative;
 	display: grid;
 	align-content: center;
-	gap: 34px;
+	justify-items: center;
+	gap: 22px;
 	padding: 72px;
 	background:
 		linear-gradient(90deg, rgba(0,49,53,.9) 0%, rgba(0,49,53,.48) 48%, rgba(175,221,229,.22) 100%),
@@ -68,42 +69,39 @@ main {
 	opacity: .76;
 }
 
-.brand {
-	position: absolute;
-	top: 28px;
-	left: 34px;
-	font-size: .78rem;
-	letter-spacing: .22em;
-	text-transform: uppercase;
-	color: #afdde5;
-}
-
 .hero-copy,
 .board-form {
 	position: relative;
 	z-index: 1;
 }
 
+.hero-copy {
+	text-align: center;
+	display: grid;
+	justify-items: center;
+}
+
 .eyebrow {
-	margin: 0 0 18px;
-	font-size: .78rem;
-	letter-spacing: .18em;
+	margin: 18px 0 0;
+	font-size: .92rem;
+	letter-spacing: .08em;
 	text-transform: uppercase;
 	color: #afdde5;
 }
 
 h1 {
-	max-width: 720px;
+	max-width: 840px;
 	margin: 0;
-	font-size: clamp(3rem, 8vw, 6.4rem);
-	line-height: .95;
+	font-size: clamp(2.8rem, 6.3vw, 5.4rem);
+	line-height: 1.02;
 	font-weight: 300;
+	text-align: center;
 }
 
 .subtitle {
 	max-width: 600px;
-	margin: 24px 0 0;
-	font-size: 1.12rem;
+	margin: 16px 0 0;
+	font-size: .98rem;
 	line-height: 1.6;
 	color: rgba(247,251,255,.78);
 }
@@ -112,7 +110,7 @@ h1 {
 	width: min(720px, 100%);
 	display: grid;
 	gap: 12px;
-	padding-top: 18px;
+	margin-top: 30px;
 	justify-self: center;
 }
 
@@ -171,17 +169,34 @@ h1 {
 	background: #13bbc7;
 }
 
-.public-board,
 .smallink {
 	color: #afdde5;
 	text-decoration: none;
 }
 
 .public-board {
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 58px;
+	padding: 0 34px;
+	margin-top: 4px;
+	border: 1px solid rgba(255,255,255,.36);
+	background: rgba(255,255,255,.94);
+	color: #003135;
+	font-weight: 800;
+	text-decoration: none;
 	text-align: center;
+	box-shadow: 0 16px 38px rgba(0,0,0,.22);
 }
 
-.public-board:hover,
+.public-board:hover {
+	background: #afdde5;
+	color: #003135;
+}
+
 .smallink:hover {
 	color: #ffffff;
 }
