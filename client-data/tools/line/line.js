@@ -375,7 +375,6 @@
 
 	function menuListener(elem, onButton, onMenu, e) {
 		if(!onMenu&&!onButton){
-			e.stopPropagation();
 			return true;
 		}
 		return false;

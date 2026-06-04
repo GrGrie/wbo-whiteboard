@@ -27,12 +27,34 @@
 
 var fs = require('fs')
 , path = require("path")
-, config = require("./configuration.js");
+, config = require("./configuration.js")
+, boardPaths = require("./boardPaths.js");
 
 function ensureHistoryDir() {
 	if (config.SAVE_BOARDS) {
 		fs.mkdirSync(config.HISTORY_DIR, { recursive: true });
 	}
+}
+
+function removeDirContents(dir) {
+	if (!fs.existsSync(dir)) return;
+	fs.readdirSync(dir).forEach(function (name) {
+		var file = path.join(dir, name);
+		var stat = fs.lstatSync(file);
+		if (stat.isDirectory()) {
+			removeDirContents(file);
+			fs.rmdirSync(file);
+		} else {
+			fs.unlinkSync(file);
+		}
+	});
+}
+
+function copyFileSafe(from, to) {
+	if (!fs.existsSync(from)) return false;
+	fs.mkdirSync(path.dirname(to), { recursive: true });
+	fs.copyFileSync(from, to);
+	return true;
 }
 
 /**
@@ -43,7 +65,10 @@ var BoardData = function (name) {
 	this.name = name;
 	this.size = 0;
 	this.elements = {};
-	this.file = path.join(config.HISTORY_DIR, "board-" + encodeURIComponent(name) + ".json");
+	this.dir = boardPaths.boardDir(name);
+	this.assetsDir = boardPaths.assetsDir(name);
+	this.assetCacheDir = path.join(this.dir, ".asset-cache");
+	this.file = boardPaths.boardFile(name);
 	this.lastSaveDate = Date.now();
 	this.actionHistory = [];
 	this.actionHistory.push = function (){
@@ -239,14 +264,78 @@ BoardData.prototype.delete = function (id) {
 BoardData.prototype.clear = function () {
 	//KISS
 	if(Object.keys(this.elements).length === 0){
+		this.clearAssets();
 		return false;
 	}else{
-		this.actionHistory.push({type:'C',size: this.size, elems:this.elements});
+		var assetBackups = this.cacheRecentAssets(this.elements);
+		this.actionHistory.push({type:'C',size: this.size, elems:this.elements, assetBackups:assetBackups});
 		this.undoHistory = [];
 		this.size=0;
 		this.elements={};
+		this.clearAssets();
 		this.delaySave();
 		return true;
+	}
+};
+
+BoardData.prototype.cacheRecentAssets = function cacheRecentAssets(elements) {
+	if (!config.SAVE_BOARDS) return [];
+	var docs = [];
+	var ids = Object.keys(elements);
+	for (var i = 0; i < ids.length; i++) {
+		var elem = elements[ids[i]];
+		var data = elem && elem.data;
+		if (!data || data.type !== "doc" || typeof data.src !== "string") continue;
+		var asset = this.assetFileFromSrc(data.src);
+		if (!asset) continue;
+		docs.push({
+			file: asset.file,
+			name: asset.name,
+			time: elem.time || 0,
+			counter: elem.counter || 0
+		});
+	}
+	docs.sort(function (a, b) {
+		return (b.time === a.time) ? b.counter - a.counter : b.time - a.time;
+	});
+	var cacheId = Date.now().toString(36) + Math.round(Math.random() * 36).toString(36);
+	var cacheDir = path.join(this.assetCacheDir, cacheId);
+	var backups = [];
+	for (var j = 0; j < Math.min(3, docs.length); j++) {
+		var cachedFile = path.join(cacheDir, docs[j].name);
+		if (copyFileSafe(docs[j].file, cachedFile)) {
+			backups.push({ name: docs[j].name, cache: cachedFile });
+		}
+	}
+	return backups;
+};
+
+BoardData.prototype.assetFileFromSrc = function assetFileFromSrc(src) {
+	var prefix = "/board-assets/" + encodeURIComponent(this.name) + "/";
+	if (src.indexOf(prefix) !== 0) return null;
+	var name = decodeURIComponent(src.slice(prefix.length));
+	if (!/^[0-9A-Za-z_.-]+$/.test(name)) return null;
+	return {
+		name: name,
+		file: path.join(this.assetsDir, name)
+	};
+};
+
+BoardData.prototype.restoreAssetBackups = function restoreAssetBackups(backups) {
+	if (!Array.isArray(backups)) return;
+	fs.mkdirSync(this.assetsDir, { recursive: true });
+	for (var i = 0; i < backups.length; i++) {
+		copyFileSafe(backups[i].cache, path.join(this.assetsDir, backups[i].name));
+	}
+};
+
+BoardData.prototype.clearAssets = function clearAssets() {
+	if (!config.SAVE_BOARDS) return;
+	try {
+		removeDirContents(this.assetsDir);
+		fs.mkdirSync(this.assetsDir, { recursive: true });
+	} catch (err) {
+		console.trace(new Error("Unable to clear board assets: " + err));
 	}
 };
 
@@ -262,6 +351,7 @@ BoardData.prototype.undo = function () {
 			case "C":
 				this.elements=lastEvent.elems;
 				this.size = lastEvent.size;
+				this.restoreAssetBackups(lastEvent.assetBackups);
 				break;
 			case "R":
 				this.elements[lastEvent.elem.data.id]=lastEvent.elem;
@@ -325,6 +415,7 @@ BoardData.prototype.redo = function () {
 			case "C":
 				this.elements = {};
 				this.size = 0;
+				this.clearAssets();
 				break;
 			case "A":
 				this.elements[lastEvent.elem.data.id]=lastEvent.elem;
@@ -507,6 +598,7 @@ BoardData.prototype.save = function (file) {
 	this.clean();
 	if(config.SAVE_BOARDS){  //TODO Need to updat this
 		ensureHistoryDir();
+		fs.mkdirSync(this.dir, { recursive: true });
 		if (!file) file = this.file;
 		var board_txt = JSON.stringify(this.elements);
 		var that = this;
@@ -530,6 +622,7 @@ BoardData.prototype.saveSync = function (file) {
 	this.clean();
 	if(config.SAVE_BOARDS){
 		ensureHistoryDir();
+		fs.mkdirSync(this.dir, { recursive: true });
 		if (!file) file = this.file;
 		var board_txt = JSON.stringify(this.elements);
 		try {
@@ -635,7 +728,8 @@ BoardData.prototype.validate = function validate(item, parent) {
 BoardData.load = function loadBoard(name) {  //TODO need to update
 	var boardData = new BoardData(name);
 	return new Promise((accept) => {
-		fs.readFile(boardData.file, function (err, data) {
+		var file = fs.existsSync(boardData.file) ? boardData.file : boardPaths.legacyBoardFile(name);
+		fs.readFile(file, function (err, data) {
 			try {
 				if (err) throw err;
 				boardData.elements = JSON.parse(data);

@@ -37,6 +37,18 @@
 		Tools.send(msg,"Undo");
 	};
 
+	function isEditableTarget(target) {
+		if (!target) return false;
+		if (target.isContentEditable) return true;
+		return $(target).is("textarea,input,select") || $(target).closest(".CodeMirror, [contenteditable=true]").length > 0;
+	}
+
+	function keyUndo(evt) {
+		if ((!evt.ctrlKey && !evt.metaKey) || evt.shiftKey || evt.key.toLowerCase() !== "z") return;
+		if (isEditableTarget(evt.target)) return;
+		undo(evt);
+	}
+
 	function draw(data) {
 		var elem;
 		switch (data.type) {
@@ -64,5 +76,7 @@
 		"onstart":undo,
 		"mouseCursor": "crosshair",
 	});
+
+	window.addEventListener("keydown", keyUndo, false);
 
 })(); //End of code isolation

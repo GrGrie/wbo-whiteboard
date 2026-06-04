@@ -7,7 +7,8 @@ var  sockets = require('./sockets.js')
 	, serveStatic = require("serve-static")
 	, createSVG = require("./createSVG.js")
 	, templating = require("./templating.js")
-	, config = require("./configuration.js");
+	, config = require("./configuration.js")
+	, boardPaths = require("./boardPaths.js");
 
 var https;
 
@@ -94,12 +95,12 @@ function readSecrets(file) {
 }
 
 function boardFile(name) {
-	return path.join(config.HISTORY_DIR, "board-" + encodeURIComponent(name) + ".json");
+	return boardPaths.boardFile(name);
 }
 
 function boardExists(name) {
 	if (!name || name === "anonymous") return true;
-	return fs.existsSync(boardFile(name));
+	return fs.existsSync(boardPaths.boardFile(name)) || fs.existsSync(boardPaths.legacyBoardFile(name));
 }
 
 function isAuthorized(query) {
@@ -117,8 +118,73 @@ function serveUnauthorized(response) {
 
 function ensureBoardFile(name) {
 	if (!config.SAVE_BOARDS || boardExists(name)) return;
-	fs.mkdirSync(config.HISTORY_DIR, { recursive: true });
-	fs.writeFileSync(boardFile(name), "{}");
+	fs.mkdirSync(boardPaths.assetsDir(name), { recursive: true });
+	fs.writeFileSync(boardPaths.boardFile(name), "{}");
+}
+
+function ensureBoardStorage(name) {
+	if (!config.SAVE_BOARDS) return;
+	fs.mkdirSync(boardPaths.assetsDir(name), { recursive: true });
+	if (!fs.existsSync(boardPaths.boardFile(name))) {
+		if (fs.existsSync(boardPaths.legacyBoardFile(name))) {
+			fs.copyFileSync(boardPaths.legacyBoardFile(name), boardPaths.boardFile(name));
+		} else {
+			fs.writeFileSync(boardPaths.boardFile(name), "{}");
+		}
+	}
+}
+
+function serveAsset(parts, response) {
+	var boardName = decodeURIComponent(parts[1] || "");
+	var fileName = parts[2] || "";
+	if (!boardExists(boardName) || !/^[0-9A-Za-z_.-]+$/.test(fileName)) return serveUnauthorized(response);
+	var assetFile = path.join(boardPaths.assetsDir(boardName), fileName);
+	if (path.resolve(path.dirname(assetFile)) !== path.resolve(boardPaths.assetsDir(boardName))) return serveUnauthorized(response);
+	var ext = path.extname(fileName).toLowerCase();
+	var type = {
+		".gif": "image/gif",
+		".jpg": "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png": "image/png",
+		".webp": "image/webp"
+	}[ext] || "application/octet-stream";
+	fs.readFile(assetFile, function (err, data) {
+		if (err) return serveError({ url: "/board-assets" }, response)(err);
+		response.writeHead(200, {
+			"Content-Type": type,
+			"Cache-Control": "public, max-age=31536000",
+			"Content-Length": data.length
+		});
+		response.end(data);
+	});
+}
+
+function receiveBoardAsset(request, response, boardName) {
+	if (!boardExists(boardName)) return serveUnauthorized(response);
+	var body = "";
+	request.on("data", function (chunk) {
+		body += chunk;
+		if (body.length > config.MAX_DOUMENT_SIZE * 2) request.connection.destroy();
+	});
+	request.on("end", function () {
+		try {
+			var payload = JSON.parse(body);
+			var match = /^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$/.exec(payload.dataUrl || "");
+			if (!match) throw new Error("Unsupported image payload.");
+			var ext = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp" }[match[1]];
+			var data = Buffer.from(match[2], "base64");
+			if (!data.length || data.length > config.MAX_DOUMENT_SIZE) throw new Error("Image is too large.");
+			ensureBoardStorage(boardName);
+			var id = String(payload.id || crypto.randomBytes(12).toString("hex")).replace(/[^0-9A-Za-z_.-]/g, "");
+			var fileName = id + "." + ext;
+			fs.writeFileSync(path.join(boardPaths.assetsDir(boardName), fileName), data);
+			response.writeHead(200, { "Content-Type": "application/json" });
+			response.end(JSON.stringify({ src: "/board-assets/" + encodeURIComponent(boardName) + "/" + fileName }));
+		} catch (err) {
+			response.writeHead(400, { "Content-Type": "application/json" });
+			response.end(JSON.stringify({ error: err.message }));
+		}
+	});
 }
 
 function cleanBoardRedirect(response, boardName) {
@@ -131,6 +197,14 @@ function handleRequest(request, response) {
 	var parts = parsedUrl.pathname.split('/');
 	if (parts[0] === '') parts.shift();
 	var boardName = parsedUrl.query.board;
+
+	if (parts[0] === "board-assets" && request.method === "POST") {
+		return receiveBoardAsset(request, response, boardName || "anonymous");
+	}
+
+	if (parts[0] === "board-assets" && request.method === "GET") {
+		return serveAsset(parts, response);
+	}
 
 	if (parts[0] === "board.html" && boardName) {
 		if (!boardExists(boardName)) {
@@ -165,7 +239,9 @@ function handleRequest(request, response) {
 		}
 	} else if (parts[0] === "download") {
 		var boardName = encodeURIComponent(parts[1]),
-			history_file = path.join(config.HISTORY_DIR, "board-" + boardName + ".json");
+			history_file = fs.existsSync(boardPaths.boardFile(decodeURIComponent(parts[1]))) ?
+				boardPaths.boardFile(decodeURIComponent(parts[1])) :
+				boardPaths.legacyBoardFile(decodeURIComponent(parts[1]));
 		if (parts.length > 2 && /^[0-9A-Za-z.\-]+$/.test(parts[2])) {
 			history_file += '.' + parts[2] + '.bak';
 		}
@@ -181,7 +257,9 @@ function handleRequest(request, response) {
 		});
 	} else if (parts[0] === "preview") {
 		var boardName = encodeURIComponent(parts[1]),
-			history_file = path.join(config.HISTORY_DIR, "board-" + boardName + ".json");
+			history_file = fs.existsSync(boardPaths.boardFile(decodeURIComponent(parts[1]))) ?
+				boardPaths.boardFile(decodeURIComponent(parts[1])) :
+				boardPaths.legacyBoardFile(decodeURIComponent(parts[1]));
 		createSVG.renderBoard(history_file, function (err, svg) {
 			if (err) {
 				log(err);

@@ -349,6 +349,37 @@ html, body, svg {
 	color:gray;
 }
 
+.zoom-control {
+	position: fixed;
+	left: 74px;
+	bottom: 18px;
+	z-index: 70;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: min(300px, calc(100vw - 110px));
+	height: 44px;
+	padding: 0 12px;
+	color: #1f2933;
+	background: rgba(255, 255, 255, .94);
+	border: 1px solid #dce5ee;
+	border-radius: 8px;
+	box-shadow: 0 4px 14px rgba(20, 34, 51, .18);
+}
+
+.zoom-control input {
+	flex: 1;
+	min-width: 120px;
+	margin: 0;
+}
+
+.zoom-control span {
+	min-width: 44px;
+	text-align: right;
+	font-size: .82rem;
+	font-weight: 700;
+}
+
 #compass #south{
 	left:16px;
 	top:24px;

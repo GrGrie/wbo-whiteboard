@@ -57,6 +57,11 @@
 		}
 	};
 
+	function toggle(){
+		if(!menuInitialized)initMenu();
+		Tools.menus["Pencil"].show(true);
+	};
+
 	var colorPresets = [
 		"#111111", "#666666", "#ffffff", "#ff4136", "#ff851b",
 		"#ffdc00", "#2ecc40", "#0074d9", "#001f3f", "#7fdbff",
@@ -338,13 +343,13 @@
             "changeTool":"1"
         },
 		"draw": draw,
+		"toggle": toggle,
 		"menu":{
 			"title":"Color",
 			"content": buildColorMenu(),
 			"listener": function (elem, onButton, onMenu, e) {
 				if($(e.target).closest(".canvascolor-container").length)return false;
 				if(!onMenu&&!onButton){
-					e.stopPropagation();
 					return true;
 				}
 				return false;

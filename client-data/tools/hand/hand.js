@@ -25,25 +25,6 @@
  */
 
 (function () { //Code isolation
-
-	var orig = { x: 0, y: 0 };
-	var pressed = false;
-	function press(x, y, evt, isTouchEvent) {
-		if (!isTouchEvent) {
-			pressed = true;
-			orig.x = scrollX + evt.clientX;
-			orig.y = scrollY + evt.clientY;
-		}
-	}
-	function move(x, y, evt, isTouchEvent) {
-		if (pressed && !isTouchEvent) { //Let the browser handle touch to scroll
-			window.scrollTo(orig.x - evt.clientX, orig.y - evt.clientY);
-		}
-	}
-	function release() {
-		pressed = false;
-	}
-
 	var rightMousePan = {
 		orig: { x: 0, y: 0 },
 		pressed: false,
@@ -96,25 +77,6 @@
 	function preventBoardContextMenu(evt) {
 		evt.preventDefault();
 	}
-
-	Tools.add({ //The new tool
-		// "name": "Hand",
-	"icon": "✋",
-        "name": "Hand",
-		//"icon": "",
-		"shortcuts": {
-            "changeTool":"8"
-        },
-		"listeners": {
-			"press": press,
-			"move": move,
-			"release": release
-		},
-		"mouseCursor": "move"
-	});
-
-	//The hand tool is selected by default
-	Tools.change("Hand");
 
 	Tools.svg.addEventListener("mousedown", startRightMousePan, true);
 	document.addEventListener("mousemove", moveRightMousePan, true);

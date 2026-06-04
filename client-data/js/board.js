@@ -644,6 +644,30 @@ function drawAndBroadcastWithTool(toolName, data) {
 	return true;
 }
 
+Tools.uploadBoardAsset = function uploadBoardAsset(id, dataUrl, callback) {
+	var request = new XMLHttpRequest();
+	request.open("POST", "/board-assets?board=" + encodeURIComponent(Tools.boardName || "anonymous"), true);
+	request.setRequestHeader("Content-Type", "application/json");
+	request.onload = function () {
+		if (request.status < 200 || request.status >= 300) {
+			console.error("Unable to upload board asset: " + request.responseText);
+			return callback(null);
+		}
+		try {
+			var response = JSON.parse(request.responseText);
+			callback(response.src || null);
+		} catch (err) {
+			console.error("Unable to parse board asset response: " + err);
+			callback(null);
+		}
+	};
+	request.onerror = function () {
+		console.error("Unable to upload board asset.");
+		callback(null);
+	};
+	request.send(JSON.stringify({ id: id, dataUrl: dataUrl }));
+};
+
 function pasteTextAsBoardText(text) {
 	text = (text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 	if (!text.trim()) return false;
@@ -681,21 +705,26 @@ function pasteImageFileAsDocument(file, offset) {
 	if (!file) return;
 	var reader = new FileReader();
 	reader.onload = function (e) {
+		var dataUrl = e.target.result;
 		var image = new Image();
 		image.onload = function () {
 			var pos = Tools.getPastePosition(offset);
+			var uid = Tools.generateUID("doc");
 			var msg = {
-				id: Tools.generateUID("doc"),
+				id: uid,
 				type: "doc",
-				src: image.src,
 				w: image.width || 300,
 				h: image.height || 300,
 				x: pos.x,
 				y: pos.y
 			};
-			drawAndBroadcastWithTool("Document", msg);
+			Tools.uploadBoardAsset(uid, dataUrl, function (src) {
+				if (!src) return;
+				msg.src = src;
+				drawAndBroadcastWithTool("Document", msg);
+			});
 		};
-		image.src = e.target.result;
+		image.src = dataUrl;
 	};
 	reader.readAsDataURL(file);
 }

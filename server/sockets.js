@@ -2,7 +2,8 @@ var iolib = require('socket.io')
 	, fs = require('fs')
 	, path = require('path')
 	, BoardData = require("./boardData.js").BoardData
-	, config = require("./configuration.js");
+	, config = require("./configuration.js")
+	, boardPaths = require("./boardPaths.js");
 
 
 // Map from name to *promises* of BoardData
@@ -26,12 +27,12 @@ function startIO(app) {
 }
 
 function boardFile(name) {
-	return path.join(config.HISTORY_DIR, "board-" + encodeURIComponent(name) + ".json");
+	return boardPaths.boardFile(name);
 }
 
 function boardExists(name) {
 	if (!name || name === "anonymous") return true;
-	return fs.existsSync(boardFile(name));
+	return fs.existsSync(boardPaths.boardFile(name)) || fs.existsSync(boardPaths.legacyBoardFile(name));
 }
 
 /** Returns a promise to a BoardData with the given name*/

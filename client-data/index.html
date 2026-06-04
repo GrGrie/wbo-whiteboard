@@ -17,17 +17,16 @@
 	<section class="hero">
 		<div class="hero-copy">
 			<h1>An enhanced WBO Whiteboard crafted by GrGrie</h1>
-			<p class="eyebrow">Open the board and start shaping the lesson</p>
-			<p class="subtitle">A focused whiteboard for sketches, sheets, notes, and shared problem solving.</p>
+			<p class="intro">Open the board and start shaping the lesson. A focused whiteboard for sketches, sheets, notes, and shared problem solving.</p>
 		</div>
 
 		<a href="./board.html" class="public-board">Open public board</a>
 
 		<form action="./board.html" method="GET" class="board-form">
-			<label for="board">Name of the board</label>
+			<label for="board" class="sr-only">Name of the board</label>
 			<p class="auth-error" id="authError">Only GrGrie's credentials can create a new board.</p>
 			<div class="board-controls">
-				<input type="text" id="board" name="board" placeholder="Ivan, Algebra, Lesson-01" autofocus />
+				<input type="text" id="board" name="board" placeholder="Name of the board" autofocus />
 				<input type="text" id="login" name="login" placeholder="Login" autocomplete="username" />
 				<input type="password" id="password" name="password" placeholder="Password" autocomplete="current-password" />
 				<button type="submit">Open board</button>

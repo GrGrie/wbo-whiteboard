@@ -59,7 +59,7 @@
 		<div id="east" class='direction'><i class="fas fa-chevron-right"></i></div>
 		<div id="south" class='direction'><i class="fas fa-chevron-down"></i></div>
 	</div>
-<div id="board">
+	<div id="board">
 		
 		<svg id="canvas"  width="500" height="500" viewBox= "0 0 500 500" + svgHeightversion="1.1" xmlns="http://www.w3.org/2000/svg" >
 			 <defs id="defs">
@@ -77,6 +77,11 @@
 			
 		</svg>
 	</div>
+	<div id="zoom-control" class="zoom-control" aria-label="Board zoom">
+		<i class="fas fa-search" aria-hidden="true"></i>
+		<input type="range" id="boardZoom" min="0.4" max="2.5" step="0.05" value="1" aria-label="Board zoom" />
+		<span id="boardZoomValue">100%</span>
+	</div>
 	<div class="window" id="calc-container" style="display:none">
 		<div id="calc-container-header">Calc
 			<button type="button" class="close window-button" id="close-calc" aria-label="Close"><span aria-hidden="true">×</span></button>
@@ -84,58 +89,6 @@
 		</div>
 		<div id="calculator"></div>
 	</div>
-
-	<div class="window" id="wb-editor-container" style="display:none">
-		<div id="wb-editor-container-header"><span id='wb-editor-curmode'>Text</span> Editor &nbsp;
-			<button class="wb-editor-button" data-toggle="tooltip" data-trigger="hover"  title="Modes" id="wb-options" type="button"><i  class="fas fa-bars wb-editor-icon"></i></button>
-			<button class="wb-editor-button wb-button-inactive"  data-toggle="tooltip" data-trigger="hover"  title="Run" id="wb-editor-run" type="button"><i  class="fas fa-play-circle wb-editor-icon"></i></button>
-			<button class="wb-editor-button wb-button-inactive" data-toggle="tooltip" data-trigger="hover"  title="Real-time Run"  id="wb-editor-live" type="button"><i id="wb-editor-live-icon" class="fas fa-circle-notch fa-spin wb-editor-icon"></i></button>
-			<button type="button" class="wb-button wb-textoptions-button"  data-toggle="tooltip" data-trigger="hover"  title="Text Options" id="wb-textoptions" aria-label="Down"><span aria-hidden="true"><i  class="fas fa-angle-double-down"></i></span></button>
-			<button type="button" class="close window-button" id="close-editor" aria-label="Close"><span aria-hidden="true">×</span></button>
-			<button type="button" class="close window-button window-icon-button"  data-toggle="tooltip" data-trigger="hover"  title="Maximize" id="max-editor" aria-label="Max"><span aria-hidden="true"><i  class="fa fa-window-maximize wb-editor-icon"></i></span></button>
-		</div>
-		<div id="wb-editor-container-modes">
-			<button class="wb-button wb-mode-button"  id="wb-close-options" type="button"><i class="fas fa-angle-double-up" aria-hidden="true"></i></button>
-			<button class="wb-editor-mode" id="wb-text"  data-toggle="tooltip" data-trigger="hover"  title="Text editor" type="button">text</button> 
-			<button class="wb-editor-mode" id="wb-js"  data-toggle="tooltip" data-trigger="hover"  title="Javascript compiler/editor" type="button">js</button> 
-			<button class="wb-editor-mode" id="wb-python"  data-toggle="tooltip" data-trigger="hover"  title="Python compiler/editor" type="button">py</button> 
-			<button class="wb-editor-mode" id="wb-cpp"  data-toggle="tooltip" data-trigger="hover"  title="C++ compiler/Editor" type="button">c++</button> 
-		</div>
-		<div id="wb-editor-container-toolbar">
-			<button class="wb-button wb-edit-button" id="wb-close-edit" type="button"><i class="fas fa-angle-double-up" aria-hidden="true"></i></button>
-			<button class="wb-button wb-edit-button" id="wb-spell-check"  data-toggle="tooltip" data-trigger="hover"  title="Check spelling" type="button"><i id="wb-editor-spell-check-icon" class="fas fa-spell-check"></i></button>  
-			<button class="wb-button wb-edit-button" id="wb-code-template"  data-toggle="tooltip" data-trigger="hover"  title="Code template" type="button"><i class="fa fa-file-code-o"></i></button>
-			<button class="wb-button wb-edit-button" id="wb-ed-undo"  data-toggle="tooltip" data-trigger="hover"  title="Undo" type="button"><i class="fas fa-undo"></i></button>  
-			<button class="wb-button wb-edit-button" id="wb-ed-redo"  data-toggle="tooltip" data-trigger="hover"  title="Redo" type="button"><i class="fas fa-redo"></i></button>  
-		</div>
-	  <div id="wb-editor">
-		<div class="row wb-editor">
-		  <div class="col-sm-12" id="wb-editor-input">
-		  </div>
-		</div>
-	  </div>
-	</div>
-	<!-- Modal -->
-	<div class="modal fade" id="myModal" role="dialog">
-		<div class="modal-dialog modal-dialog-centered">
-		
-		  <!-- Modal content-->
-		  <div class="modal-content">
-			<div class="modal-header wb-modal-header">
-			  <button type="button" class="close" data-dismiss="modal">&times;</button>
-			  <h4 class="modal-title">Insert Code Template</h4>
-			</div>
-			<div class="modal-body">
-			  <p>This will insert a basic template for the current language, replacing existing code. Do you wish to continue?</p>
-			</div>
-			<div class="modal-footer">
-			<button type="button" id="wb-ed-insert-template" class="btn btn-default" data-dismiss="modal">Ok</button>
-			  <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-			</div>
-		  </div>
-		  
-		</div>
-	  </div>
 	<div id="menu" class="menu">
 		<div id="menuItems">
 			<ul id="tools" class="tools">
@@ -189,13 +142,14 @@
 	<script type="application/json" id="translations">{}</script>
 	<script src="js/path-data-polyfill.js"></script>
 	<script src="js/minitpl.js"></script>
-	<script src="js/board.js?v=20260603-9"></script>
-	<script src="tools/pencil/pencil.js?v=20260603-5"></script>
+	<script src="js/board.js?v=20260604-1"></script>
+	<script src="js/zoom-slider.js?v=20260604-1"></script>
+	<script src="tools/pencil/pencil.js?v=20260604-1"></script>
 	<script src="tools/eraser/eraser.js?v=20260603-5"></script>
 	<script src="tools/sheet/sheet.js?v=20260603-7"></script>
-	<script src="tools/rect/rect.js?v=20260603-4"></script>
+	<script src="tools/rect/rect.js?v=20260604-1"></script>
 	<script src="tools/text/text.js?v=20260603-4"></script>
-	<script src="tools/line/line.js?v=20260603-4"></script>
+	<script src="tools/line/line.js?v=20260604-1"></script>
 
 	<!-- BEGIN TRANSFORM TOOL -->
 	<!-- Transform dep: 2D -->
@@ -204,42 +158,9 @@
 	<script src="tools/transform/transform.js?v=20260603-7"></script>
 	<!-- END TRANSFORM TOOL -->
 
-	<script src="tools/document/document.js?v=20260603-5"></script>
+	<script src="tools/document/document.js?v=20260604-1"></script>
 
-	<!-- BEGIN EDITOR TOOL -->
- 	<!-- Editor dep: CodeMirror --> 
-	 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.43.0/codemirror.min.js"></script>
-	 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.43.0/codemirror.min.css" />
-	 
-	 <!-- Editor dep: Typo -->
-	 <script src="https://rawgit.com/cfinke/Typo.js/master/typo/typo.js"></script>
-
-	<!-- Editor dep: Klipse -->
-	<script>
-		window.klipse_settings = {
-		  	selector_eval_python_client: 'no_element',
-		};
-	</script>
-	<script src="js/klipse_plugin.min.js"></script>
-
-	<!-- Editor dep: Firebase/Firepad -->
-	<script>
-		var firepad_config = {
-			 apiKey: "AIzaSyAkpUGWbhfHPQ07sifVfJ5GfiPRT-GfsGo",
-			 authDomain: "fir-login-629a9.firebaseapp.com",
-        		  databaseURL: "https://fir-login-629a9.firebaseio.com",
-		};
-	</script>
-	<script src="https://www.gstatic.com/firebasejs/5.5.4/firebase.js"></script>
-	<link rel="stylesheet" href="https://firepad.io/releases/v1.5.9/firepad.css" />
-	<script src="https://firepad.io/releases/v1.5.9/firepad.min.js"></script>
-
-	<!-- Editor -->
-	<script src="tools/editor/editor.js"></script>
-	<!-- END EDITOR TOOL-->
-
-	<script src="tools/hand/hand.js?v=20260603-2"></script>
-	<script src="tools/grid/grid.js"></script>
+	<script src="tools/hand/hand.js?v=20260604-1"></script>
 	<script src="tools/clear/clear.js"></script>
 	<script src="tools/eraser2/eraser2.js"></script>
 
@@ -250,10 +171,8 @@
 	<script src="tools/calculator/calculator.js"></script>
 	<!-- END CALCULATOR TOOL-->
 
-	<script src="tools/undo/undo.js"></script>
+	<script src="tools/undo/undo.js?v=20260604-1"></script>
 	<script src="tools/redo/redo.js"></script>
-	<script src="tools/zoom-in/zoom-in.js"></script>
-	<script src="tools/zoom-out/zoom-out.js"></script>
 	<script src="components/measurement/measurement.js"></script>
 	<script src="js/canvascolor/canvascolor.min.js"></script>
 

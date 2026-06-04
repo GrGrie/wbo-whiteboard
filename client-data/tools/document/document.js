@@ -16,8 +16,8 @@ function onstart() {
         reader.readAsDataURL(fileInput.files[0]);
       
         reader.onload = function (e) {
+            var dataUrl = e.target.result;
             var image = new Image();
-            image.src = e.target.result;
             image.onload = function () {
     
             var uid = Tools.generateUID("doc"); // doc for document
@@ -26,17 +26,21 @@ function onstart() {
             var msg = {
                 id: uid,
                 type:"doc",
-                src: image.src,
                 w: this.width || 300,
                 h: this.height || 300,
                 x: (100+document.documentElement.scrollLeft)/Tools.scale+10*imgCount,
                 y: (100+document.documentElement.scrollTop)/Tools.scale + 10*imgCount
                 //fileType: fileInput.files[0].type
             };
-            draw(msg);
-            Tools.send(msg,"Document");
-            imgCount++;
+            Tools.uploadBoardAsset(uid, dataUrl, function (src) {
+                if (!src) return;
+                msg.src = src;
+                draw(msg);
+                Tools.send(msg,"Document");
+                imgCount++;
+            });
             };
+            image.src = dataUrl;
         };
        // Tools.change(Tools.prevToolName);
     });
