@@ -229,14 +229,14 @@
 				if(Array.isArray(data.id)){
 					for(var i = 0;i<data.id.length;i++){
 						elem = svg.getElementById(data.id[i]);
-						if (elem !== null && !isLocked(elem)){ //console.error("Eraser: Tried to delete an element that does not exist.");
+						if (elem !== null && (data.force || !isLocked(elem))){ //console.error("Eraser: Tried to delete an element that does not exist.");
 							elem.remove();
 						}
 					}
 				}else{
 					elem = svg.getElementById(data.id);
 					if (elem === null) return; //console.error("Eraser: Tried to delete an element that does not exist.");
-					if (isLocked(elem)) return;
+					if (!data.force && isLocked(elem)) return;
 					elem.remove();
 				}
 				break;

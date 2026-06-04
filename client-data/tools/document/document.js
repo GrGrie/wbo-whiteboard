@@ -25,18 +25,33 @@ function onstart() {
             
             var msg = {
                 id: uid,
+                fileId: uid,
                 type:"doc",
+                src: "",
                 w: this.width || 300,
                 h: this.height || 300,
                 x: (100+document.documentElement.scrollLeft)/Tools.scale+10*imgCount,
                 y: (100+document.documentElement.scrollTop)/Tools.scale + 10*imgCount
                 //fileType: fileInput.files[0].type
             };
+            Tools.boardAssets.rememberLocal(uid, dataUrl);
+            draw(msg);
+            Tools.send(msg,"Document");
             Tools.uploadBoardAsset(uid, dataUrl, function (src) {
-                if (!src) return;
-                msg.src = src;
-                draw(msg);
-                Tools.send(msg,"Document");
+                if (!src) {
+                    console.error("Document image was not saved on the server.");
+                    return;
+                }
+                Tools.boardAssets.rememberRemote(uid, src);
+                var update = {
+                    type: "update",
+                    id: uid,
+                    fileId: uid,
+                    src: src,
+                    nostamp: true
+                };
+                draw(update);
+                Tools.send(update,"Document");
                 imgCount++;
             });
             };
@@ -52,13 +67,26 @@ function draw(msg) {
 
    // fakeCanvas.style.background = `url("${fileURL}") 170px 0px no-repeat`;
     //fakeCanvas.style.backgroundSize = "400px 500px";
+    Tools.boardAssets.rememberMessage(msg);
+    if (msg.type === "update") {
+        var existing = Tools.svg.getElementById(msg.id);
+        if (!existing) return;
+        if (msg.src !== undefined) {
+            var updateSrc = Tools.boardAssets.srcForMessage(msg);
+            existing.setAttribute("href", updateSrc);
+            existing.setAttributeNS(xlinkNS, "href", updateSrc);
+        }
+        return;
+    }
     var aspect = msg.w/msg.h
     var img = Tools.svg.getElementById(msg.id) || Tools.createSVGElement("image");
     img.id=msg.id;
     img.setAttribute("class", "layer-"+Tools.layer);
     img.setAttribute("data-plane", "document");
     img.setAttribute("data-protected", msg.protected !== undefined ? msg.protected : 1);
-    img.setAttributeNS(xlinkNS, "href", msg.src);
+    var src = Tools.boardAssets.srcForMessage(msg);
+    img.setAttribute("href", src);
+    img.setAttributeNS(xlinkNS, "href", src);
     img.x.baseVal.value = msg['x'];
     img.y.baseVal.value = msg['y'];
     img.setAttribute("width", 400*aspect);

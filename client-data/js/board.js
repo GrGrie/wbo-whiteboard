@@ -63,6 +63,42 @@ Tools.showOtherPointers = true;
 Tools.showMyPointer = true;
 Tools.suppressPointerMsg = false;
 
+Tools.boardAssets = (function boardAssets() {
+	var files = {};
+
+	function getFileId(msg) {
+		return msg && (msg.fileId || msg.id);
+	}
+
+	function remember(fileId, fields) {
+		if (!fileId) return;
+		files[fileId] = files[fileId] || {};
+		for (var key in fields) {
+			if (fields[key]) files[fileId][key] = fields[key];
+		}
+	}
+
+	return {
+		rememberLocal: function rememberLocal(fileId, dataUrl) {
+			remember(fileId, { dataUrl: dataUrl });
+		},
+		rememberRemote: function rememberRemote(fileId, src) {
+			remember(fileId, { src: src });
+		},
+		rememberMessage: function rememberMessage(msg) {
+			var fileId = getFileId(msg);
+			if (!fileId || !msg || typeof msg.src !== "string") return;
+			if (msg.src.indexOf("data:image/") === 0) this.rememberLocal(fileId, msg.src);
+			else this.rememberRemote(fileId, msg.src);
+		},
+		srcForMessage: function srcForMessage(msg) {
+			var fileId = getFileId(msg);
+			var file = fileId && files[fileId];
+			return (file && file.dataUrl) || (msg && msg.src) || (file && file.src) || "";
+		}
+	};
+})();
+
 const MAX_CURSOR_UPDATES_PER_SECOND = 20;
 const DISPLAY_ACTIVITY_MONITOR = true;
 var loading = true;
@@ -619,12 +655,16 @@ Tools.drawAndSend = function (data) {
 	Tools.send(data);
 };
 
-Tools.getPastePosition = function (offset) {
+Tools.getPastePosition = function (offset, width, height) {
 	offset = offset || 0;
 	var scale = Tools.getScale();
+	var viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+	var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+	width = width || 0;
+	height = height || 0;
 	return {
-		x: Math.round((document.documentElement.scrollLeft + 120) / scale + offset),
-		y: Math.round((document.documentElement.scrollTop + 120) / scale + offset)
+		x: Math.round((document.documentElement.scrollLeft + viewportWidth / 2) / scale - width / 2 + offset),
+		y: Math.round((document.documentElement.scrollTop + viewportHeight / 2) / scale - height / 2 + offset)
 	};
 };
 
@@ -708,20 +748,38 @@ function pasteImageFileAsDocument(file, offset) {
 		var dataUrl = e.target.result;
 		var image = new Image();
 		image.onload = function () {
-			var pos = Tools.getPastePosition(offset);
+			var aspect = (image.width || 300) / (image.height || 300);
+			var displayWidth = 400 * aspect;
+			var displayHeight = 400;
+			var pos = Tools.getPastePosition(offset, displayWidth, displayHeight);
 			var uid = Tools.generateUID("doc");
 			var msg = {
 				id: uid,
+				fileId: uid,
 				type: "doc",
+				src: "",
 				w: image.width || 300,
 				h: image.height || 300,
 				x: pos.x,
 				y: pos.y
 			};
+			Tools.boardAssets.rememberLocal(uid, dataUrl);
+			drawAndBroadcastWithTool("Document", msg);
 			Tools.uploadBoardAsset(uid, dataUrl, function (src) {
-				if (!src) return;
-				msg.src = src;
-				drawAndBroadcastWithTool("Document", msg);
+				if (!src) {
+					console.error("Pasted image was not saved on the server.");
+					return;
+				}
+				Tools.boardAssets.rememberRemote(uid, src);
+				var update = {
+					type: "update",
+					id: uid,
+					fileId: uid,
+					src: src,
+					nostamp: true
+				};
+				Tools.list["Document"].draw(update, true);
+				Tools.send(update, "Document");
 			});
 		};
 		image.src = dataUrl;

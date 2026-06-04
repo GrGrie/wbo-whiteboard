@@ -49,6 +49,7 @@
 
 	function onStart(evt){
 		document.getElementById("shape-lock").addEventListener("click", lockShape);
+		document.addEventListener("keydown", deleteSelectedShape);
 	};
 
 	function onQuit(){
@@ -56,8 +57,33 @@
 			wb_comp.list["Measurement"].resize("small")
 		}
 		document.getElementById("shape-lock").removeEventListener("click", lockShape);
+		document.removeEventListener("keydown", deleteSelectedShape);
 		deactivateCurrentShape();
 	};
+
+	function isEditableTarget(target) {
+		if (!target) return false;
+		if (target.isContentEditable) return true;
+		return $(target).is("textarea,input,select") ||
+			$(target).closest(".CodeMirror, [contenteditable=true]").length > 0;
+	}
+
+	function deleteSelectedShape(evt) {
+		if (!currShape || isEditableTarget(evt.target)) return;
+		if (evt.key !== "Delete" && evt.key !== "Backspace") return;
+		if (!Tools.list["Remove"] || typeof Tools.list["Remove"].draw !== "function") return;
+
+		evt.preventDefault();
+		var selectedIds = msgIds || currShape.id;
+		var msg = {
+			"type": "delete",
+			"id": selectedIds,
+			"force": true
+		};
+		deactivateCurrentShape();
+		Tools.list["Remove"].draw(msg, true);
+		Tools.send(msg, "Remove");
+	}
 
 	function start(x, y, evt) {
 
