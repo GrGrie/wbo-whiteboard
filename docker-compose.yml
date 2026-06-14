@@ -5,11 +5,19 @@ services:
     build:
       context: .
     restart: unless-stopped
-    ports:
-      - "5002:80"
+    networks:
+      - frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wbo.rule=Host(`${WBO_HOST}`)"
+      - "traefik.http.routers.wbo.entrypoints=web"
+      - "traefik.http.services.wbo.loadbalancer.server.port=80"
     environment:
       SAVE_BOARDS: "true"
-      WBO_HISTORY_DIR: /opt/app/server-data
+      WBO_HISTORY_DIR: "/opt/app/server-data"
     volumes:
       - ./server-data:/opt/app/server-data
 
+networks:
+  frontend:
+    external: true
