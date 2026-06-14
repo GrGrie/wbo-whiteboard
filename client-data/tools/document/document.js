@@ -6,6 +6,19 @@
 var xlinkNS = "http://www.w3.org/1999/xlink";
 var imgCount = 1;
 var fileInput;
+var MAX_DOCUMENT_WIDTH = 1800;
+var MAX_DOCUMENT_HEIGHT = 1400;
+
+function displaySize(width, height) {
+    width = width || 300;
+    height = height || 300;
+    var scale = Math.min(1, MAX_DOCUMENT_WIDTH / width, MAX_DOCUMENT_HEIGHT / height);
+    return {
+        w: Math.round(width * scale),
+        h: Math.round(height * scale)
+    };
+}
+
 function onstart() {
     fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -21,6 +34,7 @@ function onstart() {
             image.onload = function () {
     
             var uid = Tools.generateUID("doc"); // doc for document
+            var size = displaySize(this.width, this.height);
             // console.log(image.src.toString().length);
             
             var msg = {
@@ -30,6 +44,8 @@ function onstart() {
                 src: "",
                 w: this.width || 300,
                 h: this.height || 300,
+                displayW: size.w,
+                displayH: size.h,
                 x: (100+document.documentElement.scrollLeft)/Tools.scale+10*imgCount,
                 y: (100+document.documentElement.scrollTop)/Tools.scale + 10*imgCount
                 //fileType: fileInput.files[0].type
@@ -89,8 +105,8 @@ function draw(msg) {
     img.setAttributeNS(xlinkNS, "href", src);
     img.x.baseVal.value = msg['x'];
     img.y.baseVal.value = msg['y'];
-    img.setAttribute("width", 400*aspect);
-    img.setAttribute("height", 400);
+    img.setAttribute("width", msg.displayW || 400*aspect);
+    img.setAttribute("height", msg.displayH || 400);
     if(msg.transform)
 			img.setAttribute("transform",msg.transform);
     if(msg.data !== undefined)

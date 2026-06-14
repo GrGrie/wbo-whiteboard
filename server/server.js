@@ -6,6 +6,7 @@ var  sockets = require('./sockets.js')
 	, crypto = require("crypto")
 	, serveStatic = require("serve-static")
 	, createSVG = require("./createSVG.js")
+	, lessonPdf = require("./lessonPdf.js")
 	, templating = require("./templating.js")
 	, config = require("./configuration.js")
 	, boardPaths = require("./boardPaths.js");
@@ -79,6 +80,7 @@ const boardTemplate = new templating.BoardTemplate(path.join(config.WEBROOT, 'bo
 const indexTemplate = new templating.Template(path.join(config.WEBROOT, 'index.html'));
 const appRoot = path.dirname(__dirname);
 const secrets = readSecrets(path.join(appRoot, ".secrets"));
+const TEACHER_COOKIE = "wbo_teacher";
 
 function readSecrets(file) {
 	var values = {};
@@ -109,6 +111,47 @@ function isAuthorized(query) {
 		query &&
 		query.login === secrets.LOGIN &&
 		query.password === secrets.PASSWORD;
+}
+
+function teacherToken() {
+	if (!secrets.LOGIN || !secrets.PASSWORD) return "";
+	return crypto
+		.createHash("sha256")
+		.update(secrets.LOGIN + "\0" + secrets.PASSWORD)
+		.digest("hex");
+}
+
+function parseCookies(header) {
+	var cookies = {};
+	String(header || "").split(";").forEach(function (part) {
+		var pieces = part.split("=");
+		var key = pieces.shift();
+		if (!key) return;
+		try {
+			cookies[key.trim()] = decodeURIComponent(pieces.join("=") || "");
+		} catch (err) {
+			cookies[key.trim()] = "";
+		}
+	});
+	return cookies;
+}
+
+function isTeacherRequest(request) {
+	var expected = teacherToken();
+	if (!expected) return false;
+	return parseCookies(request.headers.cookie)[TEACHER_COOKIE] === expected;
+}
+
+function teacherCookieHeader(request) {
+	var parts = [
+		TEACHER_COOKIE + "=" + encodeURIComponent(teacherToken()),
+		"Path=/",
+		"HttpOnly",
+		"SameSite=Lax",
+		"Max-Age=" + (60 * 60 * 24 * 30)
+	];
+	if (request.connection.encrypted || request.headers["x-forwarded-proto"] === "https") parts.push("Secure");
+	return parts.join("; ");
 }
 
 function serveUnauthorized(response) {
@@ -187,9 +230,58 @@ function receiveBoardAsset(request, response, boardName) {
 	});
 }
 
-function cleanBoardRedirect(response, boardName) {
-	response.writeHead(302, { Location: "/board.html?board=" + encodeURIComponent(boardName) });
+function cleanBoardRedirect(request, response, boardName, setTeacherCookie) {
+	var headers = { Location: "/board.html?board=" + encodeURIComponent(boardName) };
+	if (setTeacherCookie) headers["Set-Cookie"] = teacherCookieHeader(request);
+	response.writeHead(302, headers);
 	response.end();
+}
+
+function receiveLessonPdf(request, response, boardName) {
+	if (!isTeacherRequest(request)) return serveUnauthorized(response);
+	var body = "";
+	request.on("data", function (chunk) {
+		body += chunk;
+		if (body.length > config.MAX_LESSON_PDF_BYTES) request.connection.destroy();
+	});
+	request.on("end", function () {
+		try {
+			var payload = JSON.parse(body);
+			var saved = lessonPdf.saveLesson(
+				path.join(config.HISTORY_DIR, "lessons"),
+				boardName || "anonymous",
+				payload
+			);
+			response.writeHead(200, { "Content-Type": "application/json" });
+			response.end(JSON.stringify({
+				filename: saved.filename,
+				size: saved.size,
+				url: "/lessons/download/" + encodeURIComponent(boardName || "anonymous") + "/" + encodeURIComponent(saved.filename)
+			}));
+		} catch (err) {
+			response.writeHead(400, { "Content-Type": "application/json" });
+			response.end(JSON.stringify({ error: err.message }));
+		}
+	});
+}
+
+function serveLessonPdf(request, response, parts) {
+	if (!isTeacherRequest(request)) return serveUnauthorized(response);
+	var boardName = decodeURIComponent(parts[2] || "anonymous");
+	var filename = decodeURIComponent(parts[3] || "");
+	if (!/^[0-9A-Za-zА-Яа-яЁё._-]+\.pdf$/u.test(filename)) return serveUnauthorized(response);
+	var lessonDir = path.join(config.HISTORY_DIR, "lessons", lessonPdf.sanitizeFilePart(boardName));
+	var file = path.join(lessonDir, filename);
+	if (path.resolve(path.dirname(file)) !== path.resolve(lessonDir)) return serveUnauthorized(response);
+	fs.readFile(file, function (err, data) {
+		if (err) return serveError(request, response)(err);
+		response.writeHead(200, {
+			"Content-Type": "application/pdf",
+			"Content-Disposition": 'attachment; filename="' + filename.replace(/"/g, "") + '"',
+			"Content-Length": data.length
+		});
+		response.end(data);
+	});
 }
 
 function handleRequest(request, response) {
@@ -206,14 +298,29 @@ function handleRequest(request, response) {
 		return serveAsset(parts, response);
 	}
 
+	if (parts[0] === "teacher" && parts[1] === "status") {
+		response.writeHead(isTeacherRequest(request) ? 204 : 401);
+		return response.end();
+	}
+
+	if (parts[0] === "lessons" && parts[1] === "pdf" && request.method === "POST") {
+		return receiveLessonPdf(request, response, boardName || "anonymous");
+	}
+
+	if (parts[0] === "lessons" && parts[1] === "download" && request.method === "GET") {
+		return serveLessonPdf(request, response, parts);
+	}
+
 	if (parts[0] === "board.html" && boardName) {
+		if (parsedUrl.query.login || parsedUrl.query.password) {
+			if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
+			if (!boardExists(boardName)) ensureBoardFile(boardName);
+			return cleanBoardRedirect(request, response, boardName, true);
+		}
 		if (!boardExists(boardName)) {
 			if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
 			ensureBoardFile(boardName);
-			return cleanBoardRedirect(response, boardName);
-		}
-		if (parsedUrl.query.login || parsedUrl.query.password) {
-			return cleanBoardRedirect(response, boardName);
+			return cleanBoardRedirect(request, response, boardName, true);
 		}
 	}
 
@@ -226,6 +333,7 @@ function handleRequest(request, response) {
 				ensureBoardFile(parsedUrl.query.board);
 			}
 			var headers = { Location: 'boards/' + encodeURIComponent(parsedUrl.query.board) };
+			if (isAuthorized(parsedUrl.query)) headers["Set-Cookie"] = teacherCookieHeader(request);
 			response.writeHead(301, headers);
 			response.end();
 		} else if (parts.length === 2 && request.url.indexOf('.') === -1) {

@@ -62,11 +62,14 @@ module.exports = {
     /** Maximum size attribute of items (for validation) */
     MAX_EMIT_COUNT_PERIOD: parseInt(process.env['MAX_EMIT_COUNT_PERIOD']) || 1000,
 
-    /** Maximum size of uploaded documents default 3MB */
-    MAX_DOUMENT_SIZE: parseInt(process.env['MAX_DOCUMENT_SIZE']) || 3145728 ,
+    /** Maximum size of uploaded documents default 12MB */
+    MAX_DOUMENT_SIZE: parseInt(process.env['MAX_DOCUMENT_SIZE']) || 12582912 ,
 
     /** Maximum number of documents allowed*/
-    MAX_DOCUMENTS: parseInt(process.env['MAX_DOCUMENTS']) || 5,
+    MAX_DOCUMENTS: parseInt(process.env['MAX_DOCUMENTS']) || 20,
+
+    /** Maximum size of a lesson PDF export request */
+    MAX_LESSON_PDF_BYTES: parseInt(process.env['MAX_LESSON_PDF_BYTES']) || 104857600,
 
     /** Maximum physical size of board (50MB) */
     MAX_BOARD_BYTES: parseInt(process.env['MAX_BOARD_BYTES']) || 52428800,

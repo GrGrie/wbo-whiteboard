@@ -1,7 +1,7 @@
 (function sheetTool() {
-	var SHEET_WIDTH = 1350;
-	var SHEET_HEIGHT = 2400;
-	var SHEET_MARGIN = 80;
+	var SHEET_WIDTH = 3200;
+	var SHEET_HEIGHT = 2200;
+	var SHEET_MARGIN = 120;
 
 	function clamp(value, min, max) {
 		return Math.max(min, Math.min(max, value));

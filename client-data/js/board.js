@@ -748,9 +748,9 @@ function pasteImageFileAsDocument(file, offset) {
 		var dataUrl = e.target.result;
 		var image = new Image();
 		image.onload = function () {
-			var aspect = (image.width || 300) / (image.height || 300);
-			var displayWidth = 400 * aspect;
-			var displayHeight = 400;
+			var size = Tools.getDocumentDisplaySize(image.width || 300, image.height || 300);
+			var displayWidth = size.w;
+			var displayHeight = size.h;
 			var pos = Tools.getPastePosition(offset, displayWidth, displayHeight);
 			var uid = Tools.generateUID("doc");
 			var msg = {
@@ -760,6 +760,8 @@ function pasteImageFileAsDocument(file, offset) {
 				src: "",
 				w: image.width || 300,
 				h: image.height || 300,
+				displayW: displayWidth,
+				displayH: displayHeight,
 				x: pos.x,
 				y: pos.y
 			};
@@ -786,6 +788,16 @@ function pasteImageFileAsDocument(file, offset) {
 	};
 	reader.readAsDataURL(file);
 }
+
+Tools.getDocumentDisplaySize = function getDocumentDisplaySize(width, height) {
+	width = width || 300;
+	height = height || 300;
+	var scale = Math.min(1, 1800 / width, 1400 / height);
+	return {
+		w: Math.round(width * scale),
+		h: Math.round(height * scale)
+	};
+};
 
 Tools.handleBoardPaste = function (evt) {
 	if (isPasteTargetEditable(evt.target)) return;
@@ -989,7 +1001,7 @@ Tools.scale = 1.0;
 var scaleTimeout = null;
 Tools.setScale = function setScale(scale) {
 	if (isNaN(scale)) scale = 1;
-	scale = Math.max(0.4, Math.min(10, scale));
+	scale = Math.max(0.2, Math.min(10, scale));
 	//Tools.svg.willChange = 'width, height';
 	//Tools.svg.style.transform = 'scale(' + scale + ')';
 	//svg.setAttributeNS(null, "width", svgWidth * percent);
@@ -1411,8 +1423,8 @@ function resize_view(){
 	//Scale the canvas on load
 	var screenWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
 	var screenHeight =  Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-	svgWidth = Tools.svg.width.baseVal.value = Math.max(screenWidth + 4000, screenWidth * 5);
-	svgHeight = Tools.svg.height.baseVal.value =  Math.max(screenHeight + 4000, screenHeight * 5);
+	svgWidth = Tools.svg.width.baseVal.value = Math.max(24000, screenWidth + 4000, screenWidth * 8);
+	svgHeight = Tools.svg.height.baseVal.value =  Math.max(16000, screenHeight + 4000, screenHeight * 8);
 	Tools.svg.setAttributeNS(null, "viewBox", "0 0 " + svgWidth + " " + svgHeight);
 }
 
