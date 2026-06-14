@@ -492,7 +492,7 @@ Tools.HTML = {
 	addStylesheet: function (href) {
 		//Adds a css stylesheet to the html or svg document
 		var link = document.createElement("link");
-		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260603-4";
+		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260614-3";
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		document.head.appendChild(link);
@@ -540,12 +540,14 @@ Tools.add = function (newTool) {
 	}
 
 	//Add the tool to the GUI
-	Tools.HTML.addTool(newTool.name, 
-		newTool.icon, 
-		newTool.iconHTML, 
-		newTool.isExtra,
-		newTool.oneTouch,
-		newTool.menu);
+	if (!newTool.hidden) {
+		Tools.HTML.addTool(newTool.name,
+			newTool.icon,
+			newTool.iconHTML,
+			newTool.isExtra,
+			newTool.oneTouch,
+			newTool.menu);
+	}
 
 	//There may be pending messages for the tool
 	var pending = Tools.pendingMessages[newTool.name];

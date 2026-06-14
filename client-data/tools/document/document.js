@@ -99,6 +99,7 @@ function draw(msg) {
     img.id=msg.id;
     img.setAttribute("class", "layer-"+Tools.layer);
     img.setAttribute("data-plane", "document");
+    img.setAttribute("data-lock-aspect", "1");
     img.setAttribute("data-protected", msg.protected !== undefined ? msg.protected : 1);
     var src = Tools.boardAssets.srcForMessage(msg);
     img.setAttribute("href", src);

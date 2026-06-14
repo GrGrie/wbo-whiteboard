@@ -637,6 +637,8 @@ Transform.prototype.init = function(target,rect,hideLock) {
         this.handlesSelected = false;
         this.lockSelection=false;
         this.dragged=false;
+        this.lockAspectRatio = false;
+        this.aspectRatio = 1;
 
         var x,y,w,h,b;
         if(Array.isArray(target)){
@@ -677,6 +679,13 @@ Transform.prototype.init = function(target,rect,hideLock) {
             w = box.width/Tools.scale;
             h = box.height/Tools.scale;
             b = (D2isTouch?20:10);
+            this.lockAspectRatio = !!(target.getAttribute &&
+                (target.getAttribute("data-lock-aspect") === "1" ||
+                target.getAttribute("data-plane") === "sheet" ||
+                target.localName === "image"));
+            var targetWidth = Number(target.getAttribute && target.getAttribute("width")) || w;
+            var targetHeight = Number(target.getAttribute && target.getAttribute("height")) || h;
+            this.aspectRatio = targetHeight ? targetWidth / targetHeight : 1;
         }
         //init points
         this.points = [];
@@ -821,7 +830,10 @@ Transform.prototype.refresh = function() {
                 }
             }
         }
-        var v = this.handles[1].point.subtract(center);           
+        if (this.lockAspectRatio) {
+            this.applyAspectRatioLock();
+        }
+        var v = this.handles[1].point.subtract(center);
         var v2 = new Point2D(v.x*-1.2,v.y*-1.2)
         this.handles[2].point.x=v2.x+center.x;
         this.handles[2].point.y=v2.y+center.y;
@@ -844,6 +856,55 @@ Transform.prototype.refresh = function() {
         this.matrix = this.updateMatrix(m,false);
         this.target.setAttribute("transform", this.matrix);
     }
+};
+
+Transform.prototype.applyAspectRatioLock = function(){
+    if(!this.lockAspectRatio || !this.aspectRatio || Array.isArray(this.target))return;
+
+    var p0 = this.points[0];
+    var p1 = this.points[1];
+    var p2 = this.points[2];
+    var p3 = this.points[3];
+    var widthVec = new Point2D(p1.x - p0.x, p1.y - p0.y);
+    var heightVec = new Point2D(p3.x - p0.x, p3.y - p0.y);
+    var width = Math.sqrt(widthVec.x * widthVec.x + widthVec.y * widthVec.y);
+    var height = Math.sqrt(heightVec.x * heightVec.x + heightVec.y * heightVec.y);
+    if(width < 1 || height < 1)return;
+
+    var widthUnit = new Point2D(widthVec.x / width, widthVec.y / width);
+    var heightUnit = new Point2D(heightVec.x / height, heightVec.y / height);
+    var targetWidth = width;
+    var targetHeight = height;
+    var horizontalHandle = this.handles[0].selected;
+    var verticalHandle = this.handles[1].selected;
+    var cornerHandle = this.handles[3].selected;
+
+    if(horizontalHandle && !verticalHandle && !cornerHandle){
+        targetWidth = height * this.aspectRatio;
+    }else if(verticalHandle && !horizontalHandle && !cornerHandle){
+        targetHeight = width / this.aspectRatio;
+    }else if(width / height >= this.aspectRatio){
+        targetHeight = width / this.aspectRatio;
+    }else{
+        targetWidth = height * this.aspectRatio;
+    }
+
+    p1.x = p0.x + widthUnit.x * targetWidth;
+    p1.y = p0.y + widthUnit.y * targetWidth;
+    p3.x = p0.x + heightUnit.x * targetHeight;
+    p3.y = p0.y + heightUnit.y * targetHeight;
+    p2.x = p1.x + p3.x - p0.x;
+    p2.y = p1.y + p3.y - p0.y;
+
+    this.handles[0].point.x = (p1.x + p2.x) / 2;
+    this.handles[0].point.y = (p1.y + p2.y) / 2;
+    this.handles[1].point.x = (p2.x + p3.x) / 2;
+    this.handles[1].point.y = (p2.y + p3.y) / 2;
+    this.handles[3].point.x = p2.x;
+    this.handles[3].point.y = p2.y;
+    this.handles[0].refresh();
+    this.handles[1].refresh();
+    this.handles[3].refresh();
 };
 
 Transform.prototype.generateTransformMatrix = function(){

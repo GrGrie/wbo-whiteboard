@@ -540,12 +540,10 @@
 
 	Tools.add({ //The new tool
 		"name": "Transform",
+		"hidden": true,
 		"icon": "?",
 		"iconHTML":icons[0],
 		"toggle":toggle,
-		"shortcuts": {
-            "changeTool":"6"
-        },
 		"listeners": {
 			"press": start,
 			"move": move,

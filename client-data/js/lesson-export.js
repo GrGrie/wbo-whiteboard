@@ -172,7 +172,7 @@
 	}
 
 	function removeExportNoise(svgClone) {
-		var selectors = ["#cursors", "#rect_1", "#transform-rect", ".opcursor", "script", "foreignObject", "iframe"];
+		var selectors = ["#cursors", "#rect_1", "#transform-rect", ".opcursor", ".sheet-page-label", "script", "foreignObject", "iframe"];
 		selectors.forEach(function (selector) {
 			Array.prototype.slice.call(svgClone.querySelectorAll(selector)).forEach(function (node) {
 				if (node.parentNode) node.parentNode.removeChild(node);
@@ -249,6 +249,15 @@
 		ctx.lineJoin = node.getAttribute("stroke-linejoin") || "miter";
 		ctx.strokeStyle = node.getAttribute("stroke") || "#000";
 		ctx.fillStyle = node.getAttribute("fill") || "#000";
+		ctx.setLineDash(parseDash(node.getAttribute("stroke-dasharray")));
+		ctx.lineDashOffset = numberAttr(node, "stroke-dashoffset", 0);
+	}
+
+	function parseDash(value) {
+		if (!value || value === "none") return [];
+		return value.split(/[\s,]+/).map(Number).filter(function (part) {
+			return !isNaN(part) && part > 0;
+		});
 	}
 
 	function applyTransform(ctx, node) {

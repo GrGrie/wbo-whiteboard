@@ -1,6 +1,6 @@
 services:
   techbrain-wbo:
-    container_name: techbrain-wbo
+    container_name: grgrie-whiteboard
     image: techbrain-wbo
     build:
       context: .

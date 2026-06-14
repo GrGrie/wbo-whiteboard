@@ -2,7 +2,6 @@
 	var SHEET_WIDTH = 3200;
 	var SHEET_MARGIN = 120;
 	var SHEET_RATIO = 16 / 9;
-	var SHEET_LABEL_CLASS = "sheet-page-label";
 	var SHEET_DIVIDER_CLASS = "sheet-page-divider";
 
 	function clamp(value, min, max) {
@@ -45,6 +44,11 @@
 				if (helpers[i].parentNode) helpers[i].parentNode.removeChild(helpers[i]);
 			}
 		}
+
+		var legacyLabels = Tools.svg.querySelectorAll(".sheet-page-label");
+		for (var j = 0; j < legacyLabels.length; j++) {
+			if (legacyLabels[j].parentNode) legacyLabels[j].parentNode.removeChild(legacyLabels[j]);
+		}
 	}
 
 	function applyTransform(elem, transform) {
@@ -54,14 +58,12 @@
 
 	function drawHelpers(rect, msg) {
 		removeHelpers(msg.id);
-		var pageNo = Number(msg.pageNo) || Number(rect.getAttribute("data-page-no")) || 1;
 		var x = Number(msg.x);
 		var y = Number(msg.y);
 		var width = Number(msg.w);
 		var height = Number(msg.h);
 		var transform = msg.transform || rect.getAttribute("transform") || "";
 		var divider = Tools.createSVGElement("line");
-		var label = Tools.createSVGElement("text");
 
 		divider.id = helperId(msg.id, "divider");
 		divider.setAttribute("class", SHEET_DIVIDER_CLASS);
@@ -70,30 +72,15 @@
 		divider.setAttribute("x2", x + width / 2);
 		divider.setAttribute("y2", y + height);
 		divider.setAttribute("stroke", "#111111");
-		divider.setAttribute("stroke-width", "10");
-		divider.setAttribute("opacity", "0.78");
+		divider.setAttribute("stroke-width", "4");
+		divider.setAttribute("stroke-dasharray", "24 18");
+		divider.setAttribute("opacity", "0.58");
 		divider.setAttribute("pointer-events", "none");
 		divider.setAttribute("data-sheet-helper", msg.id);
 		divider.setAttribute("data-plane", "sheet-helper");
 		applyTransform(divider, transform);
 
-		label.id = helperId(msg.id, "label");
-		label.setAttribute("class", SHEET_LABEL_CLASS);
-		label.setAttribute("x", x + 28);
-		label.setAttribute("y", y + 54);
-		label.setAttribute("font-size", "34");
-		label.setAttribute("font-family", "Arial, sans-serif");
-		label.setAttribute("font-weight", "700");
-		label.setAttribute("fill", "#111111");
-		label.setAttribute("opacity", "0.42");
-		label.setAttribute("pointer-events", "none");
-		label.setAttribute("data-sheet-helper", msg.id);
-		label.setAttribute("data-plane", "sheet-helper");
-		label.textContent = "Лист " + pageNo;
-		applyTransform(label, transform);
-
 		Tools.placeElement(divider, "sheet");
-		Tools.placeElement(label, "sheet");
 	}
 
 	function syncHelpers(rect) {
@@ -123,21 +110,46 @@
 		});
 	}
 
-	function createSheet(evt) {
-		if(evt)evt.preventDefault();
+	function boardClickTarget(evt) {
+		if (!evt) return null;
+		if (evt.type && evt.type.indexOf("touch") === 0 && evt.changedTouches && evt.changedTouches.length) {
+			var touch = evt.changedTouches[0];
+			return document.elementFromPoint(touch.clientX, touch.clientY);
+		}
+		return evt.target;
+	}
+
+	function targetFromHelper(target) {
+		var sheetId = target && target.getAttribute && target.getAttribute("data-sheet-helper");
+		return sheetId ? Tools.svg.getElementById(sheetId) : target;
+	}
+
+	function isBoardBackground(target) {
+		return !target ||
+			target === Tools.svg ||
+			target === Tools.group ||
+			target.id === "rect_1" ||
+			target.id === "layer-" + Tools.layer;
+	}
+
+	function isTransformableTarget(target) {
+		if (!target || !target.getAttribute) return false;
+		return target.getAttribute("data-plane") === "sheet" || target.localName === "image";
+	}
+
+	function createSheetAt(centerX, centerY, evt) {
+		if (evt) evt.preventDefault();
 		cleanupSheetHelpers();
 		var canvasWidth = Tools.svg.width.baseVal.value / Tools.getScale();
 		var canvasHeight = Tools.svg.height.baseVal.value / Tools.getScale();
-		var viewportCenterX = (document.documentElement.scrollLeft + window.innerWidth / 2) / Tools.getScale();
-		var viewportTop = document.documentElement.scrollTop / Tools.getScale();
 		var sheetWidth = SHEET_WIDTH;
 		var sheetHeight = Math.round(sheetWidth / SHEET_RATIO);
 		var scale = Math.min(1, (canvasWidth - SHEET_MARGIN * 2) / sheetWidth, (canvasHeight - SHEET_MARGIN * 2) / sheetHeight);
 		scale = Math.max(0.25, scale);
 		var width = sheetWidth * scale;
 		var height = sheetHeight * scale;
-		var x = clamp(viewportCenterX - width / 2, SHEET_MARGIN, Math.max(SHEET_MARGIN, canvasWidth - width - SHEET_MARGIN));
-		var y = clamp(viewportTop + SHEET_MARGIN, SHEET_MARGIN, Math.max(SHEET_MARGIN, canvasHeight - height - SHEET_MARGIN));
+		var x = clamp(centerX - width / 2, SHEET_MARGIN, Math.max(SHEET_MARGIN, canvasWidth - width - SHEET_MARGIN));
+		var y = clamp(centerY - height / 2, SHEET_MARGIN, Math.max(SHEET_MARGIN, canvasHeight - height - SHEET_MARGIN));
 
 		var msg = {
 			id: Tools.generateUID("sheet"),
@@ -151,13 +163,27 @@
 		};
 		draw(msg);
 		Tools.send(msg, "Sheet");
-		selectSheet(Tools.svg.getElementById(msg.id));
+	}
+
+	function press(x, y, evt) {
+		var target = targetFromHelper(boardClickTarget(evt));
+		if (isTransformableTarget(target)) {
+			if (evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+				if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
+			}
+			selectSheet(target);
+			return;
+		}
+		if (!isBoardBackground(target)) return;
+		createSheetAt(x, y, evt);
 	}
 
 	function draw(msg) {
 		var rect = Tools.svg.getElementById(msg.id);
 		cleanupSheetHelpers();
-		if(!rect){
+		if (!rect) {
 			rect = Tools.createSVGElement("rect");
 			rect.id = msg.id;
 		}
@@ -170,16 +196,17 @@
 		rect.setAttribute("stroke", "#d9d9d9");
 		rect.setAttribute("stroke-width", "2");
 		rect.setAttribute("data-plane", "sheet");
+		rect.setAttribute("data-lock-aspect", "1");
 		rect.setAttribute("data-page-no", msg.pageNo || rect.getAttribute("data-page-no") || nextPageNumber());
 		rect.setAttribute("data-protected", msg.protected !== undefined ? msg.protected : 1);
 		applyTransform(rect, msg.transform || rect.getAttribute("transform") || "");
 		rect.setAttribute("data-lock", msg.data !== undefined ? msg.data : 0);
 		rect.onmousedown = function (evt) {
 			var activeTool = Tools.curTool && Tools.curTool.name;
-			if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
+			if (["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1) return;
 			evt.preventDefault();
 			evt.stopPropagation();
-			if(evt.stopImmediatePropagation)evt.stopImmediatePropagation();
+			if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
 			selectSheet(rect);
 		};
 
@@ -189,7 +216,7 @@
 	}
 
 	function selectSheet(rect) {
-		if(rect && Tools.activateTransformTarget){
+		if (rect && Tools.activateTransformTarget) {
 			Tools.activateTransformTarget(rect);
 		}
 	}
@@ -198,10 +225,10 @@
 		"name": "Sheet",
 		"icon": "Sheet",
 		"iconHTML": "<span class='sheet-tool-icon'></span>",
-		"listeners": {},
+		"listeners": {
+			"press": press
+		},
 		"draw": draw,
-		"oneTouch": true,
-		"onstart": createSheet,
 		"mouseCursor": "crosshair",
 		"stylesheet": "tools/sheet/sheet.css"
 	});
