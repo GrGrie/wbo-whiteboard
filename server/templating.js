@@ -38,10 +38,11 @@ class Template {
         const parsedUrl = url.parse(request.url, true);
         const parameters = this.parameters(parsedUrl, request);
         var body = this.template(parameters);
+        var isEntryPage = parsedUrl.pathname === "/" || parsedUrl.pathname === "";
         var headers = {
             'Content-Length': Buffer.byteLength(body),
             'Content-Type': 'text/html',
-            'Cache-Control': 'public, max-age=3600',
+            'Cache-Control': isEntryPage ? 'no-store' : 'public, max-age=3600',
         };
         if (!parsedUrl.query.lang) {
             headers["Vary"] = 'Accept-Language';
