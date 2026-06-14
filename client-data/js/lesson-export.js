@@ -81,11 +81,57 @@
 				return sheet.localName === "rect" && Number(sheet.getAttribute("width")) > 0 && Number(sheet.getAttribute("height")) > 0;
 			})
 			.sort(function (a, b) {
-				var ay = Number(a.getAttribute("y")) || 0;
-				var by = Number(b.getAttribute("y")) || 0;
-				if (Math.abs(ay - by) > 80) return ay - by;
-				return (Number(a.getAttribute("x")) || 0) - (Number(b.getAttribute("x")) || 0);
+				var pageA = Number(a.getAttribute("data-page-no")) || 999999;
+				var pageB = Number(b.getAttribute("data-page-no")) || 999999;
+				if (pageA !== pageB) return pageA - pageB;
+				var boundsA = sheetBounds(a);
+				var boundsB = sheetBounds(b);
+				if (Math.abs(boundsA.y - boundsB.y) > 80) return boundsA.y - boundsB.y;
+				return boundsA.x - boundsB.x;
 			});
+	}
+
+	function parseMatrix(transform) {
+		var match = /^matrix\(([^)]+)\)$/.exec(transform || "");
+		if (!match) return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+		var parts = match[1].split(/[\s,]+/).map(Number);
+		if (parts.length !== 6 || !parts.every(function (value) { return !isNaN(value); })) {
+			return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+		}
+		return { a: parts[0], b: parts[1], c: parts[2], d: parts[3], e: parts[4], f: parts[5] };
+	}
+
+	function transformPoint(matrix, x, y) {
+		return {
+			x: matrix.a * x + matrix.c * y + matrix.e,
+			y: matrix.b * x + matrix.d * y + matrix.f
+		};
+	}
+
+	function sheetBounds(sheet) {
+		var x = Number(sheet.getAttribute("x")) || 0;
+		var y = Number(sheet.getAttribute("y")) || 0;
+		var width = Number(sheet.getAttribute("width")) || 1;
+		var height = Number(sheet.getAttribute("height")) || 1;
+		var matrix = parseMatrix(sheet.getAttribute("transform"));
+		var points = [
+			transformPoint(matrix, x, y),
+			transformPoint(matrix, x + width, y),
+			transformPoint(matrix, x, y + height),
+			transformPoint(matrix, x + width, y + height)
+		];
+		var xs = points.map(function (point) { return point.x; });
+		var ys = points.map(function (point) { return point.y; });
+		var minX = Math.min.apply(Math, xs);
+		var minY = Math.min.apply(Math, ys);
+		var maxX = Math.max.apply(Math, xs);
+		var maxY = Math.max.apply(Math, ys);
+		return {
+			x: minX,
+			y: minY,
+			width: Math.max(1, maxX - minX),
+			height: Math.max(1, maxY - minY)
+		};
 	}
 
 	function readHref(image) {
@@ -126,44 +172,209 @@
 	}
 
 	function removeExportNoise(svgClone) {
-		var selectors = ["#cursors", "#rect_1", "#transform-rect", ".opcursor"];
+		var selectors = ["#cursors", "#rect_1", "#transform-rect", ".opcursor", "script", "foreignObject", "iframe"];
 		selectors.forEach(function (selector) {
 			Array.prototype.slice.call(svgClone.querySelectorAll(selector)).forEach(function (node) {
 				if (node.parentNode) node.parentNode.removeChild(node);
 			});
 		});
+		Array.prototype.slice.call(svgClone.querySelectorAll("[data-sheet-helper]")).forEach(function (node) {
+			var sheetId = node.getAttribute("data-sheet-helper");
+			if (!sheetId || !svgClone.querySelector("#" + sheetId)) {
+				if (node.parentNode) node.parentNode.removeChild(node);
+			}
+		});
 	}
 
-	function renderSheet(sheet, index) {
-		var x = Number(sheet.getAttribute("x")) || 0;
-		var y = Number(sheet.getAttribute("y")) || 0;
-		var width = Number(sheet.getAttribute("width")) || 1;
-		var height = Number(sheet.getAttribute("height")) || 1;
-		var scale = Math.min(1, MAX_RENDER_DIMENSION / width, MAX_RENDER_DIMENSION / height);
-		var canvasWidth = Math.max(1, Math.round(width * scale));
-		var canvasHeight = Math.max(1, Math.round(height * scale));
-		var clone = Tools.svg.cloneNode(true);
+	function createExportSvg(x, y, width, height, canvasWidth, canvasHeight) {
+		var exportSvg = document.createElementNS(Tools.svg.namespaceURI, "svg");
+		var defs = Tools.svg.querySelector("#defs");
+		var layer = Tools.svg.querySelector("#layer-1");
 		var background = document.createElementNS(Tools.svg.namespaceURI, "rect");
+		var content = document.createElementNS(Tools.svg.namespaceURI, "g");
 
-		removeExportNoise(clone);
-		clone.setAttribute("xmlns", Tools.svg.namespaceURI);
-		clone.setAttribute("xmlns:xlink", xlinkNS);
-		clone.setAttribute("width", canvasWidth);
-		clone.setAttribute("height", canvasHeight);
-		clone.setAttribute("viewBox", [x, y, width, height].join(" "));
-		clone.setAttribute("preserveAspectRatio", "none");
-		clone.style.background = "#fff";
+		exportSvg.setAttribute("xmlns", Tools.svg.namespaceURI);
+		exportSvg.setAttribute("xmlns:xlink", xlinkNS);
+		exportSvg.setAttribute("width", canvasWidth);
+		exportSvg.setAttribute("height", canvasHeight);
+		exportSvg.setAttribute("viewBox", [x, y, width, height].join(" "));
+		exportSvg.setAttribute("preserveAspectRatio", "none");
+
+		if (defs) exportSvg.appendChild(defs.cloneNode(true));
 
 		background.setAttribute("x", x);
 		background.setAttribute("y", y);
 		background.setAttribute("width", width);
 		background.setAttribute("height", height);
 		background.setAttribute("fill", "#fff");
-		var firstDrawable = clone.querySelector("#layer-1");
-		if (firstDrawable) firstDrawable.insertBefore(background, firstDrawable.firstChild);
+		exportSvg.appendChild(background);
+
+		if (layer) {
+			Array.prototype.slice.call(layer.childNodes).forEach(function (node) {
+				content.appendChild(node.cloneNode(true));
+			});
+		}
+		exportSvg.appendChild(content);
+		removeExportNoise(exportSvg);
+
+		return exportSvg;
+	}
+
+	function renderSheet(sheet, index) {
+		var bounds = sheetBounds(sheet);
+		var x = bounds.x;
+		var y = bounds.y;
+		var width = bounds.width;
+		var height = bounds.height;
+		var scale = Math.min(1, MAX_RENDER_DIMENSION / width, MAX_RENDER_DIMENSION / height);
+		var canvasWidth = Math.max(1, Math.round(width * scale));
+		var canvasHeight = Math.max(1, Math.round(height * scale));
+		var clone = createExportSvg(x, y, width, height, canvasWidth, canvasHeight);
 
 		return inlineImages(clone).then(function () {
-			return svgToJpeg(clone, canvasWidth, canvasHeight, index);
+			return renderSvgElementsToJpeg(clone, canvasWidth, canvasHeight, index);
+		});
+	}
+
+	function numberAttr(node, name, fallback) {
+		var value = Number(node.getAttribute(name));
+		return isNaN(value) ? fallback : value;
+	}
+
+	function applyPaint(ctx, node) {
+		var opacity = Number(node.getAttribute("opacity"));
+		ctx.globalAlpha = isNaN(opacity) ? 1 : opacity;
+		ctx.lineWidth = numberAttr(node, "stroke-width", 1);
+		ctx.lineCap = node.getAttribute("stroke-linecap") || "butt";
+		ctx.lineJoin = node.getAttribute("stroke-linejoin") || "miter";
+		ctx.strokeStyle = node.getAttribute("stroke") || "#000";
+		ctx.fillStyle = node.getAttribute("fill") || "#000";
+	}
+
+	function applyTransform(ctx, node) {
+		var transform = node.getAttribute("transform");
+		var match = /^matrix\(([^)]+)\)$/.exec(transform || "");
+		if (!match) return;
+		var parts = match[1].split(/[\s,]+/).map(Number);
+		if (parts.length === 6 && parts.every(function (value) { return !isNaN(value); })) {
+			ctx.transform(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]);
+		}
+	}
+
+	function loadImage(src) {
+		return new Promise(function (resolve, reject) {
+			if (!src) return resolve(null);
+			var image = new Image();
+			image.onload = function () { resolve(image); };
+			image.onerror = reject;
+			image.src = src;
+		});
+	}
+
+	function drawPath(ctx, node) {
+		var d = node.getAttribute("d");
+		if (!d || typeof Path2D === "undefined") return;
+		var path = new Path2D(d);
+		var fill = node.getAttribute("fill");
+		var stroke = node.getAttribute("stroke");
+		if (fill && fill !== "none") ctx.fill(path);
+		if (!fill || fill === "none" || stroke && stroke !== "none") ctx.stroke(path);
+	}
+
+	function drawLine(ctx, node) {
+		ctx.beginPath();
+		ctx.moveTo(numberAttr(node, "x1", 0), numberAttr(node, "y1", 0));
+		ctx.lineTo(numberAttr(node, "x2", 0), numberAttr(node, "y2", 0));
+		ctx.stroke();
+	}
+
+	function drawRect(ctx, node) {
+		var x = numberAttr(node, "x", 0);
+		var y = numberAttr(node, "y", 0);
+		var width = numberAttr(node, "width", 0);
+		var height = numberAttr(node, "height", 0);
+		var fill = node.getAttribute("fill");
+		var stroke = node.getAttribute("stroke");
+		if (fill && fill !== "none") ctx.fillRect(x, y, width, height);
+		if (stroke && stroke !== "none") ctx.strokeRect(x, y, width, height);
+	}
+
+	function drawText(ctx, node) {
+		var size = numberAttr(node, "font-size", numberAttr(node, "size", 24));
+		ctx.font = size + "px Arial, sans-serif";
+		ctx.textBaseline = "alphabetic";
+		ctx.fillText(node.textContent || "", numberAttr(node, "x", 0), numberAttr(node, "y", 0));
+	}
+
+	function drawImageNode(ctx, node) {
+		var src = readHref(node);
+		return loadImage(src).then(function (image) {
+			if (!image) return;
+			ctx.drawImage(
+				image,
+				numberAttr(node, "x", 0),
+				numberAttr(node, "y", 0),
+				numberAttr(node, "width", image.width || 0),
+				numberAttr(node, "height", image.height || 0)
+			);
+		});
+	}
+
+	function drawNode(ctx, node) {
+		if (!node || node.nodeType !== 1) return Promise.resolve();
+		return Promise.resolve().then(function () {
+			ctx.save();
+			applyTransform(ctx, node);
+			applyPaint(ctx, node);
+			var name = node.localName;
+			if (name === "g" || name === "svg") {
+				return drawChildren(ctx, node);
+			}
+			if (name === "rect") drawRect(ctx, node);
+			else if (name === "path") drawPath(ctx, node);
+			else if (name === "line") drawLine(ctx, node);
+			else if (name === "text") drawText(ctx, node);
+			else if (name === "image") return drawImageNode(ctx, node);
+		}).then(function () {
+			ctx.restore();
+		}, function (err) {
+			ctx.restore();
+			throw err;
+		});
+	}
+
+	function drawChildren(ctx, node) {
+		var children = Array.prototype.slice.call(node.childNodes);
+		return children.reduce(function (promise, child) {
+			return promise.then(function () {
+				return drawNode(ctx, child);
+			});
+		}, Promise.resolve());
+	}
+
+	function renderSvgElementsToJpeg(svgNode, width, height, index) {
+		return new Promise(function (resolve, reject) {
+			try {
+				var canvas = document.createElement("canvas");
+				var ctx = canvas.getContext("2d");
+				var viewBox = String(svgNode.getAttribute("viewBox") || "0 0 " + width + " " + height).split(/[\s,]+/).map(Number);
+				canvas.width = width;
+				canvas.height = height;
+				ctx.fillStyle = "#fff";
+				ctx.fillRect(0, 0, width, height);
+				ctx.scale(width / viewBox[2], height / viewBox[3]);
+				ctx.translate(-viewBox[0], -viewBox[1]);
+				drawChildren(ctx, svgNode).then(function () {
+					resolve({
+						name: "page-" + (index + 1),
+						width: width,
+						height: height,
+						dataUrl: canvas.toDataURL("image/jpeg", 0.92)
+					});
+				}, reject);
+			} catch (err) {
+				reject(new Error("Не удалось отрендерить лист " + (index + 1) + ": " + err.message));
+			}
 		});
 	}
 
@@ -191,7 +402,7 @@
 			};
 			image.onerror = function () {
 				URL.revokeObjectURL(url);
-				reject(new Error("Не удалось отрендерить лист " + (index + 1)));
+				reject(new Error("Не удалось отрендерить лист " + (index + 1) + ". Попробуйте обновить страницу и повторить экспорт."));
 			};
 			image.src = url;
 		});

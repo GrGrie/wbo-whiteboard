@@ -399,9 +399,10 @@ function serveLessonPdf(request, response, parts) {
 	if (path.resolve(path.dirname(file)) !== path.resolve(lessonDir)) return serveUnauthorized(response);
 	fs.readFile(file, function (err, data) {
 		if (err) return serveError(request, response)(err);
+		var asciiFilename = filename.replace(/[^\x20-\x7E]+/g, "-").replace(/"/g, "");
 		response.writeHead(200, {
 			"Content-Type": "application/pdf",
-			"Content-Disposition": 'attachment; filename="' + filename.replace(/"/g, "") + '"',
+			"Content-Disposition": "attachment; filename=\"" + asciiFilename + "\"; filename*=UTF-8''" + encodeURIComponent(filename),
 			"Content-Length": data.length
 		});
 		response.end(data);
