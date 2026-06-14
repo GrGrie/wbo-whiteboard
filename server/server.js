@@ -159,6 +159,55 @@ function serveUnauthorized(response) {
 	response.end();
 }
 
+function htmlEscape(value) {
+	return String(value || "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
+
+function decodeBoardSlug(slug) {
+	try {
+		return decodeURIComponent(slug);
+	} catch (err) {
+		return slug;
+	}
+}
+
+function listSavedBoards() {
+	var boards = {};
+	if (!config.SAVE_BOARDS || !fs.existsSync(config.HISTORY_DIR)) return [];
+	fs.readdirSync(config.HISTORY_DIR).forEach(function (name) {
+		var fullPath = path.join(config.HISTORY_DIR, name);
+		var stat = fs.statSync(fullPath);
+		if (stat.isDirectory()) {
+			var boardJson = path.join(fullPath, "board.json");
+			if (!fs.existsSync(boardJson)) return;
+			var boardName = decodeBoardSlug(name);
+			boards[boardName] = {
+				name: boardName,
+				updated: fs.statSync(boardJson).mtime
+			};
+			return;
+		}
+		var legacy = /^board-(.+)\.json$/.exec(name);
+		if (legacy) {
+			var legacyName = decodeBoardSlug(legacy[1]);
+			boards[legacyName] = {
+				name: legacyName,
+				updated: stat.mtime
+			};
+		}
+	});
+	return Object.keys(boards).map(function (name) {
+		return boards[name];
+	}).sort(function (a, b) {
+		return b.updated - a.updated;
+	});
+}
+
 function ensureBoardFile(name) {
 	if (!config.SAVE_BOARDS || boardExists(name)) return;
 	fs.mkdirSync(boardPaths.assetsDir(name), { recursive: true });
@@ -237,6 +286,81 @@ function cleanBoardRedirect(request, response, boardName, setTeacherCookie) {
 	response.end();
 }
 
+function dashboardRedirect(request, response, setTeacherCookie) {
+	var headers = { Location: "/dashboard" };
+	if (setTeacherCookie) headers["Set-Cookie"] = teacherCookieHeader(request);
+	response.writeHead(302, headers);
+	response.end();
+}
+
+function serveDashboard(response) {
+	var boards = listSavedBoards();
+	var boardItems = boards.map(function (board) {
+		var name = htmlEscape(board.name);
+		var updated = board.updated.toLocaleString("ru-RU", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit"
+		});
+		return '<a class="dashboard-board" href="/board.html?board=' + encodeURIComponent(board.name) + '">' +
+			'<span class="dashboard-board-name">' + name + '</span>' +
+			'<span class="dashboard-board-date">' + htmlEscape(updated) + '</span>' +
+			'</a>';
+	}).join("");
+
+	var body = '<!DOCTYPE html><html lang="ru"><head>' +
+		'<meta charset="utf-8" />' +
+		'<meta name="viewport" content="width=device-width, initial-scale=1" />' +
+		'<title>Личный кабинет - GrGrie Whiteboard</title>' +
+		'<link rel="icon" type="image/png" sizes="any" href="/logo.png?v=20260603-1" />' +
+		'<link rel="stylesheet" href="/index.css?v=20260614-1" />' +
+		'</head><body class="dashboard-page"><main class="dashboard-main">' +
+		'<section class="dashboard-shell">' +
+		'<header class="dashboard-header">' +
+		'<div><p class="dashboard-kicker">Личный кабинет</p><h1>Мои доски</h1></div>' +
+		'<a class="dashboard-public" href="/board.html">Публичная доска</a>' +
+		'</header>' +
+		'<form class="dashboard-create" action="/dashboard" method="GET">' +
+		'<label for="board">Новая или существующая доска</label>' +
+		'<div><input id="board" name="board" type="text" placeholder="Например: masha-algebra" autofocus />' +
+		'<button type="submit">Открыть</button></div>' +
+		'</form>' +
+		'<div class="dashboard-list">' +
+		(boards.length ? boardItems : '<p class="dashboard-empty">Пока нет сохраненных досок.</p>') +
+		'</div>' +
+		'</section></main></body></html>';
+
+	response.writeHead(200, {
+		"Content-Type": "text/html; charset=utf-8",
+		"Cache-Control": "no-store",
+		"Content-Length": Buffer.byteLength(body)
+	});
+	response.end(body);
+}
+
+function handleDashboard(request, response, parsedUrl) {
+	var requestedBoard = String(parsedUrl.query.board || "").trim();
+	var triedLogin = parsedUrl.query.login || parsedUrl.query.password;
+
+	if (triedLogin) {
+		if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
+		if (requestedBoard) {
+			ensureBoardFile(requestedBoard);
+			return cleanBoardRedirect(request, response, requestedBoard, true);
+		}
+		return dashboardRedirect(request, response, true);
+	}
+
+	if (!isTeacherRequest(request)) return serveUnauthorized(response);
+	if (requestedBoard) {
+		ensureBoardFile(requestedBoard);
+		return cleanBoardRedirect(request, response, requestedBoard, false);
+	}
+	return serveDashboard(response);
+}
+
 function receiveLessonPdf(request, response, boardName) {
 	if (!isTeacherRequest(request)) return serveUnauthorized(response);
 	var body = "";
@@ -269,7 +393,7 @@ function serveLessonPdf(request, response, parts) {
 	if (!isTeacherRequest(request)) return serveUnauthorized(response);
 	var boardName = decodeURIComponent(parts[2] || "anonymous");
 	var filename = decodeURIComponent(parts[3] || "");
-	if (!/^[0-9A-Za-zА-Яа-яЁё._-]+\.pdf$/u.test(filename)) return serveUnauthorized(response);
+	if (!filename || filename !== path.basename(filename) || !/\.pdf$/i.test(filename)) return serveUnauthorized(response);
 	var lessonDir = path.join(config.HISTORY_DIR, "lessons", lessonPdf.sanitizeFilePart(boardName));
 	var file = path.join(lessonDir, filename);
 	if (path.resolve(path.dirname(file)) !== path.resolve(lessonDir)) return serveUnauthorized(response);
@@ -290,6 +414,10 @@ function handleRequest(request, response) {
 	if (parts[0] === '') parts.shift();
 	var boardName = parsedUrl.query.board;
 
+	if (parts[0] === "dashboard") {
+		return handleDashboard(request, response, parsedUrl);
+	}
+
 	if (parts[0] === "board-assets" && request.method === "POST") {
 		return receiveBoardAsset(request, response, boardName || "anonymous");
 	}
@@ -309,6 +437,11 @@ function handleRequest(request, response) {
 
 	if (parts[0] === "lessons" && parts[1] === "download" && request.method === "GET") {
 		return serveLessonPdf(request, response, parts);
+	}
+
+	if (parts[0] === "board.html" && !boardName && (parsedUrl.query.login || parsedUrl.query.password)) {
+		if (!isAuthorized(parsedUrl.query)) return serveUnauthorized(response);
+		return dashboardRedirect(request, response, true);
 	}
 
 	if (parts[0] === "board.html" && boardName) {
