@@ -1,7 +1,7 @@
 services:
-  techbrain-wbo:
+  grgrie-whiteboard:
     container_name: grgrie-whiteboard
-    image: techbrain-wbo
+    image: grgrie-whiteboard
     build:
       context: .
     restart: unless-stopped
