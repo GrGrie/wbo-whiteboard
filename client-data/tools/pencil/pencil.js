@@ -30,6 +30,8 @@
 	var curLineId = "",
 		startX=0,
 		startY=0,
+		straightMode="",
+		straightSize=4,
 		lastTime = performance.now(), //The time at which the last point was drawn
 		end=false;
 	var curPen = {
@@ -149,6 +151,29 @@
 		evt.preventDefault();
 
 		Tools.suppressPointerMsg = true;
+		startX=x;
+		startY=y;
+
+		if(evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey)){
+			straightMode = (evt.ctrlKey || evt.metaKey) ? "arrw" : "line";
+			straightSize = Tools.getSize();
+			curLineId = Tools.generateUID("s"); //"s" for straight line
+			Tools.drawAndSend({
+				'type': 'straight',
+				'id': curLineId,
+				'line': straightMode,
+				'color': Tools.getColor(),
+				'size': straightSize,
+				'opacity': Tools.getOpacity(),
+				'x': x,
+				'y': y,
+				'x2': x,
+				'y2': y
+			});
+			return;
+		}
+
+		straightMode = "";
 		curLineId = Tools.generateUID("l"); //"l" for line
 
 		Tools.drawAndSend({
@@ -158,8 +183,6 @@
 			'size': Tools.getSize(),
 			'opacity': Tools.getOpacity()
 		});
-		startX=x;
-		startY=y;
 		//Immediatly add a point to the line
 		continueLine(x, y);
 	}
@@ -167,7 +190,39 @@
 	function continueLine(x, y, evt) {
 		/*Wait 20ms before adding any point to the currently drawing line.
 		This allows the animation to be smother*/
-		if (curLineId !== "" && (performance.now() - lastTime > 20 || end)) {
+		if (curLineId !== "" && straightMode) {
+			var curUpdate = {
+				'type': 'update',
+				'id': curLineId,
+				'line': straightMode,
+				'x2': x,
+				'y2': y
+			};
+			if (performance.now() - lastTime > 20 || end) {
+				Tools.drawAndSend(curUpdate);
+				lastTime = performance.now();
+				if(wb_comp.list["Measurement"]){
+					var measure = {
+						type:"line",
+						x:x,
+						y:y,
+						x2:startX,
+						y2:startY
+					};
+					if(straightMode=="arrw"){
+						var d = Math.hypot(x-measure.x2,y-measure.y2);
+						if(d){
+							var r = (d+5.5*straightSize)/d;
+							measure.x2 = x + (measure.x2-x)*r;
+							measure.y2 = y + (measure.y2-y)*r;
+						}
+					}
+					wb_comp.list["Measurement"].update(measure);
+				}
+			} else {
+				draw(curUpdate);
+			}
+		}else if (curLineId !== "" && (performance.now() - lastTime > 20 || end)) {
 			Tools.drawAndSend(new PointMessage(x, y));
 			lastTime = performance.now();
 			if(wb_comp.list["Measurement"]){
@@ -191,6 +246,7 @@
 		continueLine(x, y);
 		end=false;
 		curLineId = "";
+		straightMode = "";
 		Tools.suppressPointerMsg = false;
 	}
 
@@ -198,6 +254,28 @@
 	function draw(data) {
 		Tools.drawingEvent=true;
 		switch (data.type) {
+			case "straight":
+				if(data.line=='arrw'){
+					createPolyLine(data);
+				}else{
+					createStraightLine(data);
+				}
+				break;
+			case "update":
+				var straight = svg.getElementById(data['id']);
+				if (!straight) {
+					console.error("Pencil: I received an update for a straight line that has not been created (%s).", data['id']);
+					return false;
+				}else if(Tools.useLayers && straight.getAttribute("class")!="layer-"+Tools.layer){
+					straight.setAttribute("class","layer-"+Tools.layer);
+					Tools.placeElement(straight, "drawing");
+				}
+				if(data.line=='arrw'){
+					updatePolyLine(straight, data);
+				}else{
+					updateStraightLine(straight, data);
+				}
+				break;
 			case "line":
 				renderingLine = createLine(data);
 				if(data.pts) addPoints(renderingLine,data.pts);
@@ -328,6 +406,65 @@
 		return line;
 	}
 
+	function createStraightLine(lineData) {
+		var line = svg.getElementById(lineData.id) || Tools.createSVGElement("line");
+		line.id = lineData.id;
+		line.x1.baseVal.value = lineData['x'];
+		line.y1.baseVal.value = lineData['y'];
+		line.x2.baseVal.value = lineData['x2'] || lineData['x'];
+		line.y2.baseVal.value = lineData['y2'] || lineData['y'];
+		if(Tools.useLayers)line.setAttribute("class","layer-"+Tools.layer);
+		line.setAttribute("stroke", lineData.color || "black");
+		line.setAttribute("stroke-width", lineData.size || 10);
+		line.setAttribute("opacity", Math.max(0.1, Math.min(1, lineData.opacity)) || 1);
+		if(lineData.data)line.setAttribute("data-lock",lineData.data);
+		if(lineData.transform)line.setAttribute("transform",lineData.transform);
+		Tools.placeElement(line, "drawing");
+		return line;
+	}
+
+	function updateStraightLine(line, data) {
+		line.x2.baseVal.value = data['x2'];
+		line.y2.baseVal.value = data['y2'];
+	}
+
+	function createPolyLine(lineData) {
+		var line = svg.getElementById(lineData.id) || Tools.createSVGElement("polyline");
+		line.id = lineData.id;
+		var x2 = (lineData['x2']!==undefined?lineData['x2'] : lineData['x'])-0;
+		var y2 = (lineData['y2']!==undefined?lineData['y2'] : lineData['y'])-0;
+		line.setAttribute("points", lineData['x'] + "," + lineData['y'] + " " + x2 + "," + y2
+			+ buildArrow((lineData.size || 10)/2, x2, y2, Math.atan2(y2-(lineData['y']-0), x2-(lineData['x']-0))));
+		if(Tools.useLayers)line.setAttribute("class","layer-"+Tools.layer);
+		line.setAttribute("stroke", lineData.color || "black");
+		line.setAttribute("stroke-width", lineData.size || 10);
+		line.setAttribute("fill", lineData.color || "black");
+		line.setAttribute("opacity", Math.max(0.1, Math.min(1, lineData.opacity)) || 1);
+		if(lineData.data)line.setAttribute("data-lock",lineData.data);
+		if(lineData.transform)line.setAttribute("transform",lineData.transform);
+		Tools.placeElement(line, "drawing");
+		return line;
+	}
+
+	function updatePolyLine(line, data) {
+		var pts = line.getAttributeNS(null,"points").split(/[\s,]+/);
+		var sz = line.getAttributeNS(null, "stroke-width");
+		line.setAttribute("points", pts[0] + "," + pts[1] + " " + data['x2'] + "," + data['y2']
+			+ buildArrow(sz/2, data['x2']-0, data['y2']-0, Math.atan2(data['y2']-pts[1], data['x2']-pts[0])));
+	}
+
+	function buildArrow(w,x0,y0,theta){
+		var x = 11*w - w*Math.sqrt(10);
+		var y = x/3;
+		var a1 = x0 - y*Math.sin(theta);
+		var a2 = y0 + y*Math.cos(theta);
+		var b1 = x0 + x*Math.cos(theta);
+		var b2 = y0 + x*Math.sin(theta);
+		var c1 = x0 + y*Math.sin(theta);
+		var c2 = y0 - y*Math.cos(theta);
+		return " "+a1+","+a2+" "+b1+","+b2+" "+c1+","+c2 + " " +x0+","+y0;
+	}
+
 
 	Tools.add({ //The new tool
 		// "name": "Pencil",
@@ -357,7 +494,7 @@
 		},
 		"onstart":onStart,
 		"onquit":onQuit,
-		"mouseCursor": "crosshair",
+		"mouseCursor": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 15 15'%3E%3Cpath d='M7 1v13M1 7h13' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E\") 7 7, crosshair",
 		"stylesheet": "tools/pencil/pencil.css"
 	});
 

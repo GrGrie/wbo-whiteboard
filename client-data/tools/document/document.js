@@ -51,8 +51,9 @@ function onstart() {
                 //fileType: fileInput.files[0].type
             };
             Tools.boardAssets.rememberLocal(uid, dataUrl);
-            draw(msg);
+            var img = draw(msg);
             Tools.send(msg,"Document");
+            if (Tools.activateTransformTarget) Tools.activateTransformTarget(img);
             Tools.uploadBoardAsset(uid, dataUrl, function (src) {
                 if (!src) {
                     console.error("Document image was not saved on the server.");
@@ -86,13 +87,13 @@ function draw(msg) {
     Tools.boardAssets.rememberMessage(msg);
     if (msg.type === "update") {
         var existing = Tools.svg.getElementById(msg.id);
-        if (!existing) return;
+        if (!existing) return null;
         if (msg.src !== undefined) {
             var updateSrc = Tools.boardAssets.srcForMessage(msg);
             existing.setAttribute("href", updateSrc);
             existing.setAttributeNS(xlinkNS, "href", updateSrc);
         }
-        return;
+        return existing;
     }
     var aspect = msg.w/msg.h
     var img = Tools.svg.getElementById(msg.id) || Tools.createSVGElement("image");
@@ -116,13 +117,14 @@ function draw(msg) {
             img.setAttribute("data-lock", 0);
     img.onmousedown = function (evt) {
         var activeTool = Tools.curTool && Tools.curTool.name;
-        if(["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
+        if(["Cursor", "Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1)return;
         evt.preventDefault();
         evt.stopPropagation();
         if(evt.stopImmediatePropagation)evt.stopImmediatePropagation();
         if(Tools.activateTransformTarget)Tools.activateTransformTarget(img);
     };
     Tools.placeElement(img, "document");
+    return img;
     
 }
 

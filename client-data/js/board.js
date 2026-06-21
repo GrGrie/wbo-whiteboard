@@ -492,7 +492,7 @@ Tools.HTML = {
 	addStylesheet: function (href) {
 		//Adds a css stylesheet to the html or svg document
 		var link = document.createElement("link");
-		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260614-3";
+		link.href = href + (href.indexOf("?") === -1 ? "?" : "&") + "v=20260621-1";
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		document.head.appendChild(link);
@@ -633,8 +633,8 @@ Tools.send = function (data, toolName) {
 		"data": d
 	}
 	Tools.socket.emit('broadcast', message);
-	// dont save cursor or echo messages
-	if(message.data.type != "c" && message.data.type != "e"){
+	// dont save cursor, echo, or server-side history commands
+	if(["c", "e", "clear", "undo", "redo"].indexOf(message.data.type) === -1){
 		//Dont save multiple updates for the same id or group
 		if(message.data.type == "update" && Tools.msgs.length && Tools.msgs[Tools.msgs.length-1].type =="update"){
 			if((message.data.gid &&
@@ -768,7 +768,9 @@ function pasteImageFileAsDocument(file, offset) {
 				y: pos.y
 			};
 			Tools.boardAssets.rememberLocal(uid, dataUrl);
-			drawAndBroadcastWithTool("Document", msg);
+			if (drawAndBroadcastWithTool("Document", msg) && Tools.activateTransformTarget) {
+				Tools.activateTransformTarget(Tools.svg.getElementById(uid));
+			}
 			Tools.uploadBoardAsset(uid, dataUrl, function (src) {
 				if (!src) {
 					console.error("Pasted image was not saved on the server.");

@@ -391,9 +391,6 @@
 			"move": continueLine,
 			"release": stopLine,
 		},
-		"shortcuts": {
-            "changeTool":"5"
-		},
 		"toggle":toggle,
 		"menu":{
 			"title": 'Lines',
@@ -412,6 +409,7 @@
 			"listener": menuListener
 		},
 		"draw": draw,
+		"hidden": true,
 		"mouseCursor": "crosshair",
 		"stylesheet": "tools/line/line.css"
 	});

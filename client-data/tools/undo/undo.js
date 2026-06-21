@@ -33,7 +33,6 @@
 
 	function undo(evt) {
 		if(evt)evt.preventDefault();
-		draw(msg);
 		Tools.send(msg,"Undo");
 	};
 
@@ -44,7 +43,8 @@
 	}
 
 	function keyUndo(evt) {
-		if ((!evt.ctrlKey && !evt.metaKey) || evt.shiftKey || evt.key.toLowerCase() !== "z") return;
+		var isZ = (evt.key && evt.key.toLowerCase() === "z") || evt.code === "KeyZ";
+		if ((!evt.ctrlKey && !evt.metaKey) || evt.shiftKey || !isZ) return;
 		if (isEditableTarget(evt.target)) return;
 		undo(evt);
 	}
@@ -66,17 +66,14 @@
 		"name": "Undo",
 		"icon": "🗑",
 		"iconHTML":"<i style='color: #39CCCC;margin-top:7px' class='fas fa-undo-alt'></i>",
-		"shortcuts": {
-            "actions":[{"key":"shift-U","action":undo}]
-        },
 		"listeners": {},
 		"draw": draw,
-		"isExtra":true,
+		"hidden": true,
 		"oneTouch":true,
 		"onstart":undo,
 		"mouseCursor": "crosshair",
 	});
 
-	window.addEventListener("keydown", keyUndo, false);
+	window.addEventListener("keydown", keyUndo, true);
 
 })(); //End of code isolation

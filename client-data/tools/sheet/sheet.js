@@ -203,7 +203,7 @@
 		rect.setAttribute("data-lock", msg.data !== undefined ? msg.data : 0);
 		rect.onmousedown = function (evt) {
 			var activeTool = Tools.curTool && Tools.curTool.name;
-			if (["Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1) return;
+			if (["Cursor", "Pencil", "Remove", "Rectangle", "Text", "Line"].indexOf(activeTool) !== -1) return;
 			evt.preventDefault();
 			evt.stopPropagation();
 			if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
