@@ -1,0 +1,121 @@
+/*
+ * Local replacements for the small subset of Bootstrap and Font Awesome
+ * that this whiteboard uses. Keeping these assets local makes the board
+ * boot without third-party CDNs.
+ */
+
+.fa,
+.fas,
+.far {
+	display: inline-block;
+	min-width: 1em;
+	text-align: center;
+	font-style: normal;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.fa-angle-double-up::before { content: "\21E7"; }
+.fa-angle-double-down::before { content: "\21E9"; }
+.fa-angle-double-right::before { content: "\00BB"; }
+.fa-chevron-up::before { content: "\25B2"; }
+.fa-chevron-left::before { content: "\25C0"; }
+.fa-chevron-right::before { content: "\25B6"; }
+.fa-chevron-down::before { content: "\25BC"; }
+.fa-search::before { content: "\2315"; }
+.fa-search-plus::before { content: "\2295"; }
+.fa-search-minus::before { content: "\2296"; }
+.fa-window-maximize::before { content: "\25A1"; }
+.fa-undo-alt::before { content: "\21BA"; }
+.fa-redo-alt::before { content: "\21BB"; }
+.fa-eraser::before { content: "\232B"; }
+.fa-pencil-square::before { content: "\270E"; }
+.fa-calculator::before { content: "\002B"; }
+.fa-mouse-pointer::before { content: "\2196"; }
+.fa-th::before { content: "\25A6"; }
+.fa-square::before { content: "\25A1"; }
+.fa-check-square::before { content: "\2611"; }
+.fa-lock::before { content: "\1F512"; }
+.fa-unlock::before { content: "\1F513"; }
+
+.fa-spin {
+	animation: local-fa-spin 1s linear infinite;
+}
+
+@keyframes local-fa-spin {
+	to { transform: rotate(360deg); }
+}
+
+.close {
+	float: right;
+	font-size: 1.5rem;
+	font-weight: 700;
+	line-height: 1;
+	color: #000;
+	text-shadow: 0 1px 0 #fff;
+	opacity: .5;
+	background: transparent;
+	border: 0;
+	padding: 0;
+}
+
+.close:hover,
+.close:focus {
+	color: #000;
+	text-decoration: none;
+	opacity: .75;
+}
+
+.popover {
+	position: absolute;
+	z-index: 1060;
+	display: block;
+	max-width: 276px;
+	font-size: .875rem;
+	background-color: #fff;
+	background-clip: padding-box;
+	border: 1px solid rgba(0, 0, 0, .2);
+	border-radius: .3rem;
+}
+
+.popover-header {
+	padding: .5rem .75rem;
+	margin: 0;
+	font-size: 1rem;
+	background-color: #f7f7f7;
+	border-bottom: 1px solid #ebebeb;
+	border-radius: .3rem .3rem 0 0;
+}
+
+.popover-body {
+	padding: .5rem .75rem;
+	color: #212529;
+}
+
+.fade {
+	transition: opacity .15s linear;
+}
+
+.show {
+	opacity: 1;
+}
+
+.col-sm-6,
+.col-sm-12 {
+	position: relative;
+	width: 100%;
+	min-height: 1px;
+	box-sizing: border-box;
+}
+
+@media (min-width: 576px) {
+	.col-sm-6 {
+		float: left;
+		width: 50%;
+	}
+
+	.col-sm-12 {
+		float: left;
+		width: 100%;
+	}
+}

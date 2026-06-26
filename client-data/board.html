@@ -6,12 +6,10 @@
 	<meta name="viewport" content="width=device-width, user-scalable=no" />
 	<title>LCFPrepBoard</title>
 	
-	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+	<script src="js/jquery-lite.js?v=20260626-1"></script>
  
-	<link rel="stylesheet" type="text/css" href="board.css?v=20260621-1" />
-	<script src="https://kit.fontawesome.com/0166a4ad2b.js" crossorigin="anonymous"></script>
+	<link rel="stylesheet" type="text/css" href="board.css?v=20260626-1" />
+	<link rel="stylesheet" type="text/css" href="local-ui.css?v=20260626-1" />
 	<script src="socket.io.js"></script>
 
 	<meta name="description"
@@ -36,7 +34,7 @@
 			init();
 		});
 		$(document).ready(function(){
-  			$('[data-toggle="tooltip"]').tooltip();   
+  			$('[data-toggle="tooltip"]').tooltip();
 		});
 		document.addEventListener('touchmove', function (event) {
   			if (event.scale !== 1) { event.preventDefault(); }
@@ -81,13 +79,6 @@
 		<i class="fas fa-search" aria-hidden="true"></i>
 		<input type="range" id="boardZoom" min="0.2" max="2.5" step="0.05" value="1" aria-label="Board zoom" />
 		<span id="boardZoomValue">100%</span>
-	</div>
-	<div class="window" id="calc-container" style="display:none">
-		<div id="calc-container-header">Calc
-			<button type="button" class="close window-button" id="close-calc" aria-label="Close"><span aria-hidden="true">×</span></button>
-			<button type="button" class="close window-button window-icon-button" id="max-calc" aria-label="Max"><span aria-hidden="true"><i  class="fa fa-window-maximize wb-editor-icon"></i></span></button>
-		</div>
-		<div id="calculator"></div>
 	</div>
 	<div id="menu" class="menu">
 		<div id="menuItems">
@@ -142,7 +133,7 @@
 	<script type="application/json" id="translations">{}</script>
 	<script src="js/path-data-polyfill.js"></script>
 	<script src="js/minitpl.js"></script>
-	<script src="js/board.js?v=20260621-1"></script>
+	<script src="js/board.js?v=20260626-1"></script>
 	<script src="js/zoom-slider.js?v=20260610-1"></script>
 	<script src="js/lesson-export.js?v=20260614-3"></script>
 	<script src="tools/cursor/cursor.js?v=20260621-1"></script>
@@ -165,13 +156,6 @@
 	<script src="tools/hand/hand.js?v=20260604-1"></script>
 	<script src="tools/clear/clear.js"></script>
 	<script src="tools/eraser2/eraser2.js"></script>
-
-	<!-- BEGIN CALCULATOR TOOL-->
-	<!-- Calculator dep: Desmos-->
-	<script src="https://www.desmos.com/api/v1.5/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
-	
-	<script src="tools/calculator/calculator.js"></script>
-	<!-- END CALCULATOR TOOL-->
 
 	<script src="tools/undo/undo.js?v=20260621-1"></script>
 	<script src="tools/redo/redo.js"></script>

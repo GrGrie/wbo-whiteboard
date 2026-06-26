@@ -26,6 +26,21 @@
 
 
 (function calculator() { //Code isolation
+	if (!window.Desmos) {
+		console.warn("Desmos calculator failed to load; calculator tool disabled.");
+		Tools.add({
+			"name": "Calculator",
+			"icon": "C",
+			"oneTouch": true,
+			"listeners": {},
+			"draw": function () {},
+			"onstart": function () {
+				window.alert("Calculator is temporarily unavailable because Desmos could not be loaded.");
+			},
+			"mouseCursor": "crosshair"
+		});
+		return;
+	}
 
 	var toggle = 0;
 	var opened = false;

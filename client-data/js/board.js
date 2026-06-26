@@ -102,10 +102,56 @@ Tools.boardAssets = (function boardAssets() {
 const MAX_CURSOR_UPDATES_PER_SECOND = 20;
 const DISPLAY_ACTIVITY_MONITOR = true;
 var loading = true;
+var firstBoardMessageReceived = false;
+var loadingTimeoutId = null;
+
+function hideLoadingMessage() {
+	var loadingEl = document.getElementById("loadingMessage");
+	if (!loadingEl) return;
+	loadingEl.classList.remove("error");
+	loadingEl.classList.add("hidden");
+	loadingEl.textContent = "Loading";
+	loading = false;
+	firstBoardMessageReceived = true;
+	if (loadingTimeoutId) {
+		window.clearTimeout(loadingTimeoutId);
+		loadingTimeoutId = null;
+	}
+}
+
+function showLoadingError(message) {
+	if (firstBoardMessageReceived) return;
+	var loadingEl = document.getElementById("loadingMessage");
+	if (!loadingEl) return;
+	loadingEl.classList.remove("hidden");
+	loadingEl.classList.add("error");
+	loadingEl.innerHTML =
+		"<div>" + message + "</div>" +
+		"<div class='loading-detail'>The board UI loaded, but the live connection did not finish. This is often caused by blocked external traffic or websocket polling.</div>" +
+		"<button type='button' id='retryLoading' class='loading-action'>Retry</button>";
+	var retryButton = document.getElementById("retryLoading");
+	if (retryButton) {
+		retryButton.onclick = function retryLoading() {
+			loadingEl.classList.remove("error");
+			loadingEl.textContent = "Loading";
+			loading = true;
+			firstBoardMessageReceived = false;
+			Tools.connect();
+		};
+	}
+}
+
+function scheduleLoadingTimeout() {
+	if (loadingTimeoutId) window.clearTimeout(loadingTimeoutId);
+	loadingTimeoutId = window.setTimeout(function onLoadingTimeout() {
+		showLoadingError("Unable to connect to the board.");
+	}, 12000);
+}
 
 Tools.socket = null,
 Tools.connect = function() {
   var self = this;
+  scheduleLoadingTimeout();
   if( self.socket ) {
     self.socket.destroy();
     delete self.socket;
@@ -125,9 +171,18 @@ Tools.connect = function() {
   } );
 
   this.socket.on( 'disconnect', function () {
+	if(!firstBoardMessageReceived) showLoadingError("Connection lost before the board loaded.");
     //console.log( 'disconnected from server' );
     window.setTimeout( 'Tools.connect()', 20 );
   } );
+
+  this.socket.on('connect_error', function () {
+	showLoadingError("Unable to open the live board connection.");
+  });
+
+  this.socket.on('reconnect_error', function () {
+	showLoadingError("Still unable to reconnect to the board.");
+  });
 
   this.socket.on("broadcast", function (msg) {
 
@@ -142,9 +197,7 @@ Tools.connect = function() {
 	}
 
 	if(loading){
-		var loadingEl = document.getElementById("loadingMessage");
-		loadingEl.classList.add("hidden");
-		loading=false;
+		hideLoadingMessage();
 	}
 	
   });

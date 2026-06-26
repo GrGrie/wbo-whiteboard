@@ -40,6 +40,12 @@ html, body, svg {
 	transition: 1s;
 }
 
+#loadingMessage.error {
+	background: #fff4f4;
+	color: #7a1f1f;
+	box-shadow: 0 0 2px #7a1f1f;
+}
+
 #loadingMessage.hidden {
 	display:none;
 	opacity: 0;
@@ -48,6 +54,27 @@ html, body, svg {
 
 #loadingMessage::after {
 	content: "...";
+}
+
+#loadingMessage.hidden::after,
+#loadingMessage.error::after {
+	content: "";
+}
+
+#loadingMessage .loading-detail {
+	font-size: 0.55em;
+	line-height: 1.4;
+	margin-top: 10px;
+}
+
+#loadingMessage .loading-action {
+	margin-top: 14px;
+	padding: 10px 16px;
+	font-size: 0.6em;
+	border: 1px solid #7FB2CC;
+	border-radius: 8px;
+	background: white;
+	cursor: pointer;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
