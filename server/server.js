@@ -40,8 +40,13 @@ var CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'se
 
 var fileserver = serveStatic(config.WEBROOT, {
 	maxAge: 2 * 3600 * 1000,
-	setHeaders: function (res) {
+	setHeaders: function (res, filePath) {
 		res.setHeader("X-UA-Compatible", "IE=Edge");
+		if (/\.(?:html?)$/i.test(filePath) || /[\\/]version\.js$/i.test(filePath)) {
+			res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+			res.setHeader("Pragma", "no-cache");
+			res.setHeader("Expires", "0");
+		}
 		//res.setHeader("Content-Security-Policy", CSP);
 	}
 });
